@@ -1,0 +1,3100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mentor–Student Attendance Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root{
+  --bg:#f4f6fb; --card:#ffffff; --ink:#16202f; --muted:#6b7688;
+  --brand:#1f4e9c; --brand2:#2f6fd0; --line:#e2e8f2;
+  --ok:#0f9d58; --bad:#d93025; --warn:#e8a33d; --soft:#eef3fb;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+header{background:linear-gradient(100deg,#16346b,#2f6fd0);color:#fff;padding:18px 26px}
+header h1{margin:0;font-size:20px;font-weight:700;letter-spacing:.2px}
+header .sub{font-size:12.5px;opacity:.85;margin-top:3px}
+nav.tabs{display:flex;gap:4px;padding:0 20px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:40}
+nav.tabs button{border:0;background:transparent;padding:13px 18px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent}
+nav.tabs button.active{color:var(--brand);border-bottom-color:var(--brand)}
+main{padding:18px 20px 60px;max-width:1700px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 1px 3px rgba(20,40,80,.04)}
+.card h3{margin:0 0 12px;font-size:15px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.row:last-child{margin-bottom:0}
+input,select,button,textarea{font-family:inherit;font-size:13.5px}
+input[type=text],input[type=search],input[type=number],input[type=email],select,textarea{
+  padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);outline:none;min-width:120px}
+input:focus,select:focus,textarea:focus{border-color:var(--brand2);box-shadow:0 0 0 3px rgba(47,111,208,.12)}
+button{padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer;font-weight:600;color:var(--ink)}
+button:hover{background:#f0f4fb}
+button.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+button.primary:hover{background:#173d7d}
+button.danger{color:var(--bad);border-color:#f3c9c5}
+button.ghost{background:transparent;border-color:transparent;color:var(--brand);padding:6px 8px}
+button:disabled{opacity:.45;cursor:not-allowed}
+label.inline{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);font-weight:600}
+.drop{border:2px dashed #c6d4ea;border-radius:12px;padding:26px;text-align:center;color:var(--muted);background:#fbfdff;cursor:pointer}
+.drop.hover{background:#eef5ff;border-color:var(--brand2)}
+.drop.mini{padding:16px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px}
+.stat .k{font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700}
+.stat .v{font-size:23px;font-weight:800;margin-top:4px}
+.table-wrap{overflow:auto;max-height:66vh;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13px;background:#fff}
+thead th{position:sticky;top:0;background:#eef3fb;z-index:2;text-align:left;padding:9px 10px;font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:#42536e;border-bottom:1px solid var(--line);white-space:nowrap}
+thead th[data-sort]{cursor:pointer}
+tbody td{padding:7px 10px;border-bottom:1px solid #f0f3f9;vertical-align:middle}
+tbody tr:hover{background:#f9fbff}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:700}
+.p-ok{background:#e5f6ec;color:#0b7a44}
+.p-bad{background:#fdeceb;color:#b3261e}
+.p-warn{background:#fdf3e2;color:#94631a}
+.p-mute{background:#eef1f6;color:#5c6b83}
+.up{color:var(--ok);font-weight:700}
+.down{color:var(--bad);font-weight:700}
+.muted{color:var(--muted)}
+.grid-mentor{display:grid;grid-template-columns:minmax(260px,320px) 1fr;gap:16px}
+@media (max-width:960px){.grid-mentor{grid-template-columns:1fr}}
+.mentor-list{list-style:none;padding:0;margin:0;max-height:52vh;overflow:auto}
+.mentor-list li{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px;background:#fbfcfe}
+.mentor-list li.active{border-color:var(--brand2);background:#eef5ff}
+.mentor-list .meta{font-size:11.5px;color:var(--muted)}
+.mentor-list .rank{display:inline-block;background:var(--soft);color:var(--brand);border-radius:5px;font-size:10.5px;padding:1px 5px;margin-right:5px;font-weight:700}
+.small{font-size:12px;color:var(--muted)}
+.badge{background:var(--soft);color:var(--brand);border-radius:6px;padding:2px 7px;font-size:11.5px;font-weight:700}
+.badge.red{background:#fdeceb;color:#b3261e}
+.badge.green{background:#e5f6ec;color:#0b7a44}
+.hidden{display:none!important}
+.pager{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:10px;font-size:13px}
+.tabpane{display:none}
+.tabpane.active{display:block}
+.hint{background:#fff8e6;border:1px solid #f2dfae;color:#7a5a12;padding:10px 12px;border-radius:9px;font-size:12.5px}
+.hint.good{background:#e5f6ec;border-color:#a8ddc0;color:#0b7a44}
+.remark-in{width:100%;min-width:150px;font-size:12.5px;padding:5px 8px}
+.remark-in.low{border-color:#f0b4ad;background:#fff7f6}
+.mentor-sel{font-size:12.5px;padding:5px 8px;min-width:130px;width:100%}
+.stu-actions{display:flex;gap:4px;justify-content:flex-end}
+tr.group-head td{background:#eef5ff;font-weight:700;color:var(--brand);padding:8px 10px;font-size:12.5px}
+.chip{display:inline-block;background:#fff7f6;color:#b3261e;border:1px solid #f0b4ad;border-radius:6px;padding:1px 6px;font-size:11px;margin-left:6px;font-weight:700}
+tr.dirty{background:#fffbf0}
+tr.dirty:hover{background:#fff6e0}
+tr.dirty select.mentor-sel{border-color:var(--warn);background:#fffaf0;font-weight:700}
+.save-bar{
+  position:sticky;bottom:0;background:#fff;border:1px solid var(--line);border-radius:10px;
+  padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;
+  box-shadow:0 -2px 8px rgba(20,40,80,.06);z-index:5
+}
+.save-bar.dirty{border-color:var(--warn);background:#fffaf0}
+.faculty-list{list-style:none;padding:0;margin:0;max-height:180px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.faculty-list li{padding:6px 10px;border-bottom:1px solid #f0f3f9;display:flex;justify-content:space-between;font-size:12.5px}
+.faculty-list li:last-child{border-bottom:0}
+.faculty-list li.existing{background:#f5f5f5;color:#888}
+.grid-fac{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:900px){.grid-fac{grid-template-columns:1fr}}
+.tip{font-size:11.5px;color:var(--muted);line-height:1.5}
+.avatar{width:24px;height:24px;border-radius:50%;background:var(--brand);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-right:6px}
+.mentor-chk{display:inline-flex;align-items:center;gap:5px;background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:12.5px;cursor:pointer}
+.mentor-chk input{accent-color:var(--brand)}
+.mentor-chk.checked{background:#eef5ff;border-color:var(--brand2);font-weight:600}
+
+/* =======================================================================
+   FOLLOW-UPS TAB — every rule is scoped under #tab-followup so it cannot
+   affect the Dashboard / Mentor Allocation / Data & Weeks tabs.
+   (card, badge, pill, table-wrap, num are renamed fu-* to avoid clashing with existing classes)
+   ======================================================================= */
+#tab-followup{color:#1c2b3a;font-size:16px;
+.header{background:linear-gradient(135deg,#1f4e78,#2e75b6);color:#fff;padding:22px 32px;border-radius:12px;box-shadow:0 3px 10px rgba(0,0,0,.15);margin-bottom:20px}
+.header h1{font-size:23px;font-weight:600;margin:0}
+.header p{opacity:.9;margin-top:4px;font-size:13px}
+.hd-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+.hd-meta .fu-pill{background:rgba(255,255,255,.18);color:#fff}
+.credit-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.18);color:#fff;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700}
+.credit-pill .dot{width:8px;height:8px;border-radius:50%;background:#7cfc9a}
+.upload-section{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.upload-box{background:#fff;border:2px dashed #b8cbe0;border-radius:14px;padding:26px;text-align:center;cursor:pointer;transition:.2s;position:relative}
+.upload-box:hover{border-color:#2e75b6;background:#f7fbff}
+.upload-box.loaded{border-style:solid;border-color:#28a745;background:#f0fff4}
+.upload-box.loaded-this{border-color:#2e75b6;background:#f0f7ff}
+.upload-icon{font-size:34px;margin-bottom:8px}
+.upload-box h3{font-size:15px;color:#1f4e78;margin:0 0 4px}
+.upload-box p{font-size:12px;color:#6b7a8d}
+.file-info{font-size:12px;color:#155724;margin-top:8px;font-weight:600;word-break:break-word}
+.tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;border-bottom:2px solid #d3dce6;padding-bottom:0}
+.tab{padding:10px 18px;border:none;background:#e3eaf2;color:#33475b;font-size:13.5px;font-weight:600;border-radius:8px 8px 0 0;cursor:pointer;transition:.15s}
+.tab:hover{background:#d3dce6}
+.tab.active{background:#1f4e78;color:#fff}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:20px}
+.fu-card{background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.07);border:none;border-left:5px solid #2e75b6;margin-bottom:0}
+.fu-card.green{border-left-color:#28a745}
+.fu-card.blue{border-left-color:#4a90e2}
+.fu-card.yellow{border-left-color:#f0ad4e}
+.fu-card.red{border-left-color:#dc3545}
+.fu-card.purple{border-left-color:#8e44ad}
+.fu-card .label{font-size:11px;color:#6b7a8d;text-transform:uppercase;letter-spacing:.4px}
+.fu-card .value{font-size:24px;font-weight:700;margin-top:3px}
+.fu-card small{font-size:12px;color:#6b7a8d;font-weight:400}
+.chart-wrap{background:#fff;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.07);margin-bottom:18px}
+.chart-wrap h3{font-size:14.5px;color:#1f4e78;margin:0 0 12px}
+.bar-row{display:flex;align-items:center;margin-bottom:7px;font-size:13px}
+.bar-row .name{width:270px;flex-shrink:0;color:#33475b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px}
+.bar-track{flex:1;background:#eef2f7;height:20px;border-radius:4px;overflow:hidden;display:flex}
+.bar-seg{height:100%;transition:width .35s}
+.bar-row .fu-num{width:90px;text-align:right;color:#6b7a8d;font-size:12px;padding-left:8px;white-space:normal}
+.stat-row{display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid #eef2f7}
+.stat-row:last-child{border:none}
+.stat-label{width:170px;font-size:13px;color:#33475b;font-weight:600}
+.stat-bars{flex:1;display:flex;height:26px;border-radius:6px;overflow:hidden}
+.stat-bar{display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600;transition:width .35s}
+.filters{background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.07);margin-bottom:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.filters label{font-size:11.5px;color:#6b7a8d;font-weight:600;display:block;margin-bottom:4px}
+select,input{width:100%;padding:8px 11px;border:1px solid #d3dce6;border-radius:8px;font-size:13.5px;background:#f9fbfd;min-width:0}
+select:focus,input:focus{outline:none;border-color:#2e75b6;background:#fff;box-shadow:none}
+.fu-table-wrap{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.07);border:none;max-height:none}
+.fu-table-wrap .tbar{padding:12px 16px;background:#f7f9fc;border-bottom:1px solid #e3eaf2;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.fu-table-wrap .tbar b{color:#1f4e78;font-size:13.5px}
+.btn{padding:7px 13px;border:none;background:#2e75b6;color:#fff;border-radius:7px;font-size:12.5px;font-weight:600;cursor:pointer}
+.btn:hover{background:#1f4e78}
+.scroll{overflow:auto;max-height:600px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{background:#1f4e78;color:#fff;text-align:left;padding:10px 11px;font-weight:600;cursor:pointer;user-select:none;white-space:nowrap;position:sticky;top:0;z-index:2;font-size:12.5px;text-transform:none;letter-spacing:normal;border-bottom:none}
+thead th:hover{background:#2e75b6}
+tbody td{padding:9px 11px;border-bottom:1px solid #eef2f7;vertical-align:top}
+tbody tr:hover{background:#f3f8ff}
+.fu-badge{display:inline-block;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:600;white-space:nowrap}
+.b-green{background:#d4edda;color:#155724}
+.b-red{background:#f8d7da;color:#721c24}
+.b-yellow{background:#fff3cd;color:#856404}
+.b-blue{background:#d6e4f5;color:#1f4e78}
+.b-gray{background:#e9ecef;color:#495057}
+.b-purple{background:#e7d6f3;color:#5b2c84}
+.b-teal{background:#d0ece7;color:#0b5e54}
+.mentor-tag{display:inline-block;padding:2px 8px;border-radius:6px;background:#eaf1f9;color:#1f4e78;font-size:11.5px}
+.sem-tag{display:inline-block;padding:2px 7px;border-radius:5px;background:#f0f0f5;color:#6b7a8d;font-size:11px}
+.no-data{padding:40px;text-align:center;color:#8896a5;font-size:14px}
+.footer{padding:20px;text-align:center;color:#8896a5;font-size:12px}
+.delta-pos{color:#28a745;font-weight:700}
+.delta-neg{color:#dc3545;font-weight:700}
+.delta-zero{color:#8896a5;font-weight:600}
+.fu-pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;letter-spacing:.3px}
+.p-excellent{background:#d4edda;color:#155724}
+.p-good{background:#cce5ff;color:#004085}
+.p-average{background:#fff3cd;color:#856404}
+.p-poor{background:#f8d7da;color:#721c24}
+.info-strip{background:#eaf4ff;border-left:4px solid #2e75b6;padding:11px 16px;border-radius:8px;font-size:13px;color:#1f4e78;margin-bottom:16px}
+.remark-cell{max-width:220px;font-size:12px;color:#6b7a8d}
+}
+@media(max-width:750px){#tab-followup .upload-section{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Mentor–Student Attendance Dashboard</h1>
+  <div class="sub">Faculty list import • Roll-number keyed mentor assignment • Weekly attendance comparison • Follow-up remarks</div>
+</header>
+
+<nav class="tabs">
+  <button data-tab="dashboard" class="active">Dashboard</button>
+  <button data-tab="mentors">Mentor Allocation</button>
+  <button data-tab="data">Data &amp; Weeks</button>
+  <button data-tab="followup">Follow-ups</button>
+</nav>
+
+<main>
+
+<!-- ================= DASHBOARD ================= -->
+<section id="tab-dashboard" class="tabpane active">
+
+  <div id="emptyState" class="card">
+    <div class="drop" id="dropZone">
+      <div style="font-size:15px;font-weight:700;color:#26364f">Drop the daily attendance Excel here</div>
+      <div style="margin-top:6px">or click to browse &nbsp;•&nbsp; .xlsx / .xls / .csv</div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" hidden />
+    </div>
+    <div class="hint" style="margin-top:12px">
+      You only need to upload the attendance Excel. Mentors (from the faculty list) and follow-up remarks are stored
+      against each roll number, so they persist across uploads.
+    </div>
+  </div>
+
+  <div id="dashBody" class="hidden">
+    <div class="stats" id="statsBox"></div>
+
+    <div class="card">
+      <div class="row">
+        <input type="search" id="fSearch" placeholder="Search name / roll no / remark…" style="min-width:230px">
+        <select id="fMentor"><option value="">All mentors</option></select>
+        <select id="fCourse"><option value="">All courses</option></select>
+        <select id="fBatch"><option value="">All batches</option></select>
+        <select id="fStatus">
+          <option value="">All statuses</option>
+          <option value="improved">Improved</option>
+          <option value="declined">Declined</option>
+          <option value="same">No change</option>
+          <option value="absent">Absent (0%)</option>
+          <option value="low">Below 75%</option>
+          <option value="nodata">No data</option>
+        </select>
+        <label class="inline">This week ≥ <input type="number" id="fMin" min="0" max="100" style="width:76px" placeholder="0"></label>
+        <label class="inline">≤ <input type="number" id="fMax" min="0" max="100" style="width:76px" placeholder="100"></label>
+        <button id="btnReset">Reset</button>
+        <button class="primary" id="btnPdf">⤓ Export PDF</button>
+      </div>
+      <div class="row">
+        <label class="inline"><input type="checkbox" id="fOnlyAssigned"> Only assigned</label>
+        <label class="inline"><input type="checkbox" id="fOnlyUnassigned"> Only unassigned</label>
+        <label class="inline"><input type="checkbox" id="fOnlyRemark"> Only with remark</label>
+        <label class="inline"><input type="checkbox" id="fGroupMentor"> Group by mentor</label>
+        <span class="small" id="filterInfo"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table id="mainTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th data-sort="enroll">Roll Number</th>
+              <th data-sort="name">Name</th>
+              <th data-sort="course">Course</th>
+              <th data-sort="batch">Batch</th>
+              <th data-sort="mentor">Mentor</th>
+              <th data-sort="prev" class="num">Last Week %</th>
+              <th data-sort="cur" class="num">This Week %</th>
+              <th data-sort="delta" class="num">Change</th>
+              <th data-sort="status">Status</th>
+              <th>Follow-up Remark</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <span id="rowInfo"></span>
+        <select id="pageSize">
+          <option value="100">100 / page</option>
+          <option value="200" selected>200 / page</option>
+          <option value="500">500 / page</option>
+          <option value="0">All</option>
+        </select>
+        <button id="prevPage">‹ Prev</button>
+        <span id="pageLabel"></span>
+        <button id="nextPage">Next ›</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= MENTORS ================= -->
+<section id="tab-mentors" class="tabpane">
+
+  <!-- FACULTY IMPORT -->
+  <div class="card">
+    <div class="row">
+      <span class="badge">Step 1</span>
+      <span class="small">Upload the faculty Excel — faculty names become the mentors you can assign.</span>
+    </div>
+    <div class="grid-fac">
+      <div>
+        <div class="drop mini" id="facDrop">
+          <div style="font-weight:700;color:#26364f">Drop faculty Excel here</div>
+          <div style="margin-top:4px">or click to browse &nbsp;•&nbsp; .xlsx / .xls / .csv</div>
+          <input type="file" id="facInput" accept=".xlsx,.xls,.csv" hidden />
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button id="facAddAll" class="primary" disabled>＋ Add all as mentors</button>
+          <button id="facClear" disabled>Clear preview</button>
+          <span class="small" id="facInfo">No faculty file loaded</span>
+        </div>
+        <div class="tip">
+          The parser looks for a header row containing <b>Name</b>, and optionally <b>Email</b>,
+          <b>Faculty ID / Emp ID</b>, <b>Department</b>. All sheets in the workbook are read.
+        </div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#42536e;margin-bottom:6px">FACULTY PREVIEW</div>
+        <ul class="faculty-list" id="facList">
+          <li class="muted" style="justify-content:center">No file uploaded yet.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- MANUAL ADD -->
+  <div class="card">
+    <div class="row">
+      <span class="badge">Step 2</span>
+      <span class="small">Add any extra mentors manually, then assign them to students below.</span>
+    </div>
+    <div class="row">
+      <input type="text" id="mentorName" placeholder="Mentor name" style="flex:1;min-width:140px">
+      <input type="email" id="mentorEmail" placeholder="Email (optional)" style="flex:1;min-width:140px">
+      <button class="primary" id="addMentor">Add mentor</button>
+    </div>
+  </div>
+
+  <!-- AUTO ALLOCATION (NEW) -->
+  <div class="card">
+    <div class="row">
+      <span class="badge">Step 3</span>
+      <span class="small">Auto-allocate students equally among selected mentors, based on roll number.</span>
+    </div>
+    <div class="row">
+      <label class="inline">Strategy</label>
+      <select id="autoStrategy" style="min-width:240px">
+        <option value="global">Round-robin by roll number</option>
+        <option value="block">Equal blocks (contiguous)</option>
+        <option value="class">Round-robin within each course</option>
+        <option value="random">Random balanced</option>
+      </select>
+      <button class="primary" id="runAutoAlloc">⚡ Auto-Allocate Equally</button>
+      <button id="selectAllMentors">Select all</button>
+      <button id="selectNoMentors">Select none</button>
+    </div>
+    <div class="row">
+      <span class="small">Included mentors:</span>
+      <div id="mentorCheckboxes" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+    </div>
+    <div class="hint">
+      <b>Note:</b> This will <b>replace</b> all current mentor assignments with a fresh equal distribution.
+      Each selected mentor receives the same number of students (the difference between any two mentors will never exceed 1).
+      Remember to press <b>Save Assignments</b> in the panel below to persist the result.
+    </div>
+  </div>
+
+  <!-- ALLOCATION -->
+  <div class="grid-mentor">
+    <!-- MENTORS PANEL -->
+    <div class="card">
+      <h3>Mentor List <span class="small" id="mentorCount"></span></h3>
+      <ul class="mentor-list" id="mentorList"></ul>
+      <div class="row">
+        <button id="sortMentorByRoll" title="Sort mentor list by the smallest roll number they cover">⇅ Sort by roll no</button>
+        <button id="exportMentors">⤓ Backup</button>
+        <button id="importMentorsBtn">⤒ Restore</button>
+        <input type="file" id="importMentors" accept=".json" hidden>
+        <button id="clearMentors" class="danger">Delete all</button>
+      </div>
+      <div class="hint" style="margin-top:10px">
+        <b>Save Assignments</b> is required after changing mentor dropdowns — nothing is written until you press it.
+        Mentor list and remarks live in this browser and survive a new Excel upload.
+      </div>
+    </div>
+
+    <!-- STUDENTS PANEL -->
+    <div class="card">
+      <h3>Students <span class="small" id="studentCount"></span>
+        <span class="badge red hidden" id="dirtyBadge" style="margin-left:6px"></span>
+      </h3>
+      <div class="row">
+        <input type="search" id="allocSearch" placeholder="Search name / roll number / remark…" style="min-width:220px">
+        <select id="allocCourse"><option value="">All courses</option></select>
+        <select id="allocBatch"><option value="">All batches</option></select>
+        <select id="allocMentorFilter"><option value="">All mentor statuses</option></select>
+        <label class="inline"><input type="checkbox" id="allocUnassigned"> Only unassigned</label>
+        <label class="inline"><input type="checkbox" id="allocGroupMentor"> Group by mentor</label>
+        <label class="inline"><input type="checkbox" id="allocLowOnly"> Only &lt; 75%</label>
+      </div>
+      <div class="row">
+        <select id="allocMentor" style="min-width:180px"></select>
+        <button class="primary" id="assignSelected">✔ Assign selected</button>
+        <button id="unassignSelected">✖ Unassign selected</button>
+        <button id="selectAllFiltered">Select all filtered</button>
+        <button id="clearSel">Clear selection</button>
+        <span class="small" id="allocCount"></span>
+      </div>
+      <div class="table-wrap" style="max-height:58vh">
+        <table id="allocTable">
+          <thead>
+            <tr>
+              <th style="width:34px"><input type="checkbox" id="chkAll"></th>
+              <th style="width:140px">Roll Number</th>
+              <th>Name</th>
+              <th style="width:80px">Course</th>
+              <th style="width:90px">Batch</th>
+              <th style="width:200px">Mentor</th>
+              <th style="width:210px">Follow-up Remark</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <!-- Alloc pager -->
+      <div class="pager" id="allocPager" style="margin-top:6px">
+        <span id="allocRowInfo" style="font-size:12.5px;color:var(--muted)"></span>
+        <select id="allocPageSize" style="min-width:100px">
+          <option value="50">50 / page</option>
+          <option value="100" selected>100 / page</option>
+          <option value="200">200 / page</option>
+          <option value="0">All (slow)</option>
+        </select>
+        <button id="allocPrev">‹ Prev</button>
+        <span id="allocPageLabel" style="font-size:12.5px"></span>
+        <button id="allocNext">Next ›</button>
+      </div>
+      <div class="save-bar" id="saveBar">
+        <div>
+          <span class="small" id="saveStatus">No unsaved changes</span>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button id="cancelChanges" disabled>Cancel</button>
+          <button class="primary" id="saveAssignments" disabled>💾 Save Assignments</button>
+        </div>
+      </div>
+      <div class="small" style="margin-top:8px">
+        Remarks are only suggested for students with attendance &lt; 75% — the remark box is highlighted in red for those students.
+        Remarks are saved instantly as you type.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DATA & WEEKS ================= -->
+<section id="tab-data" class="tabpane">
+  <div class="card">
+    <h3>Data source</h3>
+    <div class="row">
+      <button class="primary" id="btnUpload2">⤒ Upload / replace attendance Excel</button>
+      <button id="btnClearData" class="danger">Clear attendance data</button>
+      <span class="small" id="fileInfo">No file loaded</span>
+    </div>
+    <div class="hint">Uploading a new file merges new dates with existing data (same roll number + date is overwritten). Mentor mapping and remarks are kept.</div>
+  </div>
+
+  <div class="card">
+    <h3>Weekly comparison settings</h3>
+    <div class="row">
+      <label class="inline">Report basis</label>
+      <select id="basisMode">
+        <option value="fixed">Fixed dates (same week for everyone)</option>
+        <option value="latest">Latest available per student</option>
+      </select>
+    </div>
+    <div class="row" id="fixedDateRow">
+      <label class="inline">Last week date</label>
+      <select id="selLast"></select>
+      <label class="inline">This week date</label>
+      <select id="selThis"></select>
+      <button id="autoDates">Auto-detect (latest &amp; −7 days)</button>
+    </div>
+    <div class="small" id="dateNote"></div>
+    <div id="datePreview" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <h3>Detected sheets</h3>
+    <div class="table-wrap" style="max-height:48vh">
+      <table id="sheetTable">
+        <thead><tr>
+          <th>Sheet</th>
+          <th>Batch</th>
+          <th>Date</th>
+          <th class="num">Rows</th>
+          <th class="num">Avg&nbsp;%</th>
+          <th class="num">&lt;&nbsp;75%</th>
+          <th>Week Role</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FOLLOW-UPS ================= -->
+<section id="tab-followup" class="tabpane">
+
+  <div class="header">
+    <h1>📊 Mentor Follow-up Dashboard — Weekly Comparison </h1>
+    <div class="hd-meta">
+      <span class="fu-pill" id="fuHdRec">— Records</span>
+      <span class="credit-pill" title="Dashboard Owner">
+        <span class="dot"></span> Created by Prof Payal Parekh
+      </span>
+    </div>
+    <p>Upload two Excel files (Last Week &amp; This Week) to compare attendance and mentor follow-up performance</p>
+  </div>
+
+  <!-- Upload -->
+  <div class="upload-section">
+    <div class="upload-box" id="fuUploadLast">
+      <div class="upload-icon">📁</div>
+      <h3>📥 Last Week's Excel</h3>
+      <p>Drop or click to select file (.xlsx / .xls)</p>
+      <input type="file" id="fuFileLast" accept=".xlsx,.xls" hidden>
+      <div class="file-info" id="fuInfoLast"></div>
+    </div>
+    <div class="upload-box" id="fuUploadThis">
+      <div class="upload-icon">📁</div>
+      <h3>📤 This Week's Excel</h3>
+      <p>Drop or click to select file (.xlsx / .xls)</p>
+      <input type="file" id="fuFileThis" accept=".xlsx,.xls" hidden>
+      <div class="file-info" id="fuInfoThis"></div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="fuResults" style="display:none">
+    <div class="tabs">
+      <button class="tab active" data-tab="overview">📈 Overview</button>
+      <button class="tab" data-tab="mentor">👥 Mentor Follow-up Performance</button>
+      <button class="tab" data-tab="students">🎓 Student Comparison</button>
+    </div>
+
+    <!-- Overview -->
+    <div class="tab-content active" id="fu-tab-overview">
+      <div class="cards" id="fuCards"></div>
+      <div class="info-strip" id="fuInfoStrip"></div>
+
+      <div class="chart-wrap">
+        <h3>🔄 Attendance Status Change (Last → This Week)</h3>
+        <div id="fuStatusChart"></div>
+      </div>
+
+      <div class="chart-wrap">
+        <h3>📊 Category Shift: Last Week vs This Week</h3>
+        <div id="fuCatShift"></div>
+      </div>
+
+      <div class="chart-wrap">
+        <h3>🏆 Top 10 Improving Mentors (avg attendance change)</h3>
+        <div id="fuTopMentors"></div>
+      </div>
+    </div>
+
+    <!-- Mentor Performance -->
+    <div class="tab-content" id="fu-tab-mentor">
+      <div class="info-strip">
+        <b>Performance Score</b> = weighted: 50% × Improvement Rate + 30% × Follow-up Coverage + 20% × At-Risk Recovery.
+        &nbsp;|&nbsp; <b>Follow-up Coverage</b> = % of mentees with a calling remark in either week.
+      </div>
+      <div class="chart-wrap">
+        <h3>🏅 Mentor Performance Ranking</h3>
+        <div id="fuMentorChart"></div>
+      </div>
+      <div class="fu-table-wrap">
+        <div class="tbar">
+          <b id="fuMentorInfo">Mentor Performance</b>
+          <button class="btn" id="fuBtnMentorCsv">⬇ Export CSV</button>
+        </div>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th data-mk="mentor">Mentor</th>
+                <th data-mk="total">Mentees</th>
+                <th data-mk="calledEither">Followed Up</th>
+                <th data-mk="followUpRate">Coverage %</th>
+                <th data-mk="improved">▲ Improved</th>
+                <th data-mk="declined">▼ Declined</th>
+                <th data-mk="unchanged">= Same</th>
+                <th data-mk="atRiskLast">At-Risk (L)</th>
+                <th data-mk="atRiskThis">At-Risk (T)</th>
+                <th data-mk="avgChange">Avg Δ</th>
+                <th data-mk="score">Score</th>
+                <th>Performance</th>
+              </tr>
+            </thead>
+            <tbody id="fuMentorTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Students -->
+    <div class="tab-content" id="fu-tab-students">
+      <div class="filters">
+        <div><label>Mentor</label><select id="fuMentor"><option value="">All Mentors</option></select></div>
+        <div><label>Semester</label><select id="fuSem"><option value="">All Semesters</option></select></div>
+        <div><label>Status</label>
+          <select id="fuStatus">
+            <option value="">All Status</option>
+            <option>Improved</option>
+            <option>Declined</option>
+            <option>Unchanged</option>
+            <option>New</option>
+            <option>Missing</option>
+          </select>
+        </div>
+        <div><label>Search student / enrollment</label><input type="text" id="fuSearch" placeholder="Type to search..."></div>
+      </div>
+      <div class="fu-table-wrap">
+        <div class="tbar">
+          <b id="fuStudentInfo">—</b>
+          <button class="btn" id="fuBtnStudentCsv">⬇ Export CSV</button>
+        </div>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th data-sk="semester">Semester</th>
+                <th data-sk="enrollment">Enrollment</th>
+                <th data-sk="name">Student</th>
+                <th data-sk="mentor">Mentor</th>
+                <th data-sk="lastAtt">Last %</th>
+                <th data-sk="thisAtt">This %</th>
+                <th data-sk="change">Δ</th>
+                <th data-sk="status">Status</th>
+                <th data-sk="lastCategory">Last Cat</th>
+                <th data-sk="thisCategory">This Cat</th>
+                <th>Last Remark</th>
+                <th>This Remark</th>
+              </tr>
+            </thead>
+            <tbody id="fuStudentTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">Weekly Mentor Follow-up Dashboard · Auto-parses multi-sheet Excel workbooks</div>
+</section>
+
+</main>
+
+<script>
+/* =======================================================================
+   Utilities
+   ======================================================================= */
+const pad = n => String(n).padStart(2,'0');
+const fmtDate = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parseKey = k => { const [y,m,d] = k.split('-').map(Number); return new Date(y, m-1, d); };
+const addDaysKey = (k,n) => { const d = parseKey(k); d.setDate(d.getDate()+n); return fmtDate(d); };
+const dayDiff = (a,b) => Math.round((parseKey(a) - parseKey(b)) / 86400000);
+const prettyDate = k => parseKey(k).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+const el = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function cleanCell(v){
+  if (v === null || v === undefined) return '';
+  let s = (v instanceof Date) ? fmtDate(v) : String(v);
+  return s.replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim();
+}
+function isEnroll(v){
+  let t = cleanCell(v).replace(/\s+/g,'');
+  if (!t) return false;
+  t = t.replace(/\.0+$/,'');
+  if (/^\d{8,}$/.test(t)) return true;
+  if (/^\d{2,4}[A-Za-z]{2,4}\d{4,}$/.test(t)) return true;
+  return false;
+}
+function normalizeEnroll(v){
+  let t = cleanCell(v).replace(/\s+/g,'').toUpperCase();
+  return t.replace(/\.0+$/,'');
+}
+const isPctCell = c => /^\d{1,3}(\.\d+)?%$/.test(cleanCell(c).replace(/\s+/g,''));
+
+function parseSheetDate(name){
+  const s = String(name);
+  let m = s.match(/(\d{1,2})\s*[-/.]\s*(\d{1,2})\s*[-/.]\s*(\d{2,4})/);
+  if (m){
+    let d = +m[1], mo = +m[2], y = +m[3];
+    if (y < 100) y += 2000;
+    if (mo > 12){ const t = d; d = mo; mo = t; }
+    if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) return new Date(y, mo-1, d);
+  }
+  m = s.match(/(\d{8})/);
+  if (m){
+    const t = m[1];
+    const d = +t.slice(0,2), mo = +t.slice(2,4), y = +t.slice(4,8);
+    if (mo >= 1 && mo <= 12) return new Date(y, mo-1, d);
+  }
+  m = s.match(/(\d{6,7})/);
+  if (m){
+    const t = m[1];
+    const y = +t.slice(-4);
+    const rest = t.slice(0,-4);
+    if (rest.length === 2){
+      const d = +rest[0], mo = +rest[1];
+      if (mo >= 1 && mo <= 12) return new Date(y, mo-1, d);
+    }
+  }
+  return null;
+}
+function batchFromSheet(sn){
+  const base = String(sn).split('(')[0].trim();
+  return base.replace(/_/g,'-').toUpperCase();
+}
+
+/* =======================================================================
+   State & storage keys
+   ======================================================================= */
+const MENTOR_KEY = 'mentorApp.mentors.v3';
+const REMARK_KEY = 'mentorApp.remarks.v3';
+
+const STATE = {
+  records: [],
+  sheetInfo: [],
+  students: new Map(),
+  dates: [],
+  thisDate: null,
+  lastDate: null,
+  basisMode: 'fixed',
+  mentors: [],
+  mentorByEnroll: new Map(),
+  remarks: new Map(),
+  fileName: '',
+  filtered: [],
+  page: 1,
+  sortKey: 'enroll',
+  sortDir: 1,
+  selected: new Set(),
+  pending: new Map(),
+  facultyPreview: [],
+  allocPage: 1,
+  allocPageSize: 100
+};
+
+/* =======================================================================
+   Excel parsing (attendance)
+   ======================================================================= */
+function parseWorkbook(wb){
+  const out = [];
+  const sheets = [];
+
+  wb.SheetNames.forEach(sn => {
+    const ws = wb.Sheets[sn];
+    if (!ws) return;
+    const d = parseSheetDate(sn);
+    if (!d) return;
+    const dateKey = fmtDate(d);
+    const batch = batchFromSheet(sn);
+
+    let rows;
+    try { rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:'', blankrows:false}); }
+    catch(e){ return; }
+
+    let section = '';
+    let count = 0;
+
+    rows.forEach(row => {
+      if (!Array.isArray(row)) return;
+      const cells = row.map(cleanCell);
+      if (!cells.some(c => c !== '')) return;
+      const nonEmpty = cells.filter(c => c !== '');
+
+      const enrollIdx = cells.findIndex(isEnroll);
+      let pctIdx = cells.findIndex(isPctCell);
+
+      if (enrollIdx === -1){
+        const joined = nonEmpty.join(' ').toLowerCase();
+        const isHeader = /enroll/.test(joined) || /^p\s*\(?%\)?$/i.test(nonEmpty[0]||'')
+                      || /^percent/i.test(nonEmpty[0]||'') || /^p%$/i.test(nonEmpty[0]||'');
+        if (!isHeader){
+          const label = (nonEmpty.length <= 2 ? nonEmpty.join(' ') : nonEmpty[0]).trim();
+          if (label && !/^statistic/i.test(label) && !/^attendance/i.test(label) && !/^student\s*count/i.test(label)){
+            section = label;
+          }
+        }
+        return;
+      }
+
+      let percent = null;
+      if (pctIdx !== -1){
+        percent = parseFloat(cleanCell(cells[pctIdx]).replace('%','').replace(/\s/g,''));
+      } else {
+        for (let i = enrollIdx + 1; i < cells.length; i++){
+          const t = cleanCell(cells[i]).replace('%','').trim();
+          if (/^\d{1,3}(\.\d+)?$/.test(t)){ percent = parseFloat(t); pctIdx = i; break; }
+        }
+      }
+      if (percent === null || isNaN(percent)) return;
+
+      const nameCand = cells
+        .map((c,i) => ({c,i}))
+        .filter(o => o.i !== enrollIdx && o.i !== pctIdx && /[A-Za-z]{2,}/.test(o.c) && !/^division/i.test(o.c))
+        .sort((a,b) => b.c.length - a.c.length);
+      const name = nameCand.length ? nameCand[0].c : '';
+
+      out.push({
+        enroll: normalizeEnroll(cells[enrollIdx]),
+        name: name,
+        course: section || '',
+        batch: batch,
+        dateKey: dateKey,
+        percent: percent,
+        sheet: sn
+      });
+      count++;
+    });
+
+    sheets.push({sheet: sn, batch, dateKey, count});
+  });
+
+  return {records: out, sheets};
+}
+
+/* =======================================================================
+   Excel parsing (faculty)
+   ======================================================================= */
+function parseFacultyWorkbook(wb){
+  const faculty = [];
+  const seen = new Set();
+
+  wb.SheetNames.forEach(sn => {
+    const ws = wb.Sheets[sn];
+    if (!ws) return;
+    let rows;
+    try { rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, defval:'', blankrows:false}); }
+    catch(e){ return; }
+    if (!rows.length) return;
+
+    let headerRow = -1, nameIdx = -1, emailIdx = -1, idIdx = -1, deptIdx = -1, desgIdx = -1;
+
+    for (let i = 0; i < Math.min(rows.length, 20); i++){
+      const r = rows[i].map(c => cleanCell(c).toLowerCase());
+      const ni = r.findIndex(c => /^(name|faculty\s*name|full\s*name|teacher\s*name|mentor\s*name|faculty)$/.test(c))
+              !== -1 ? r.findIndex(c => /name/.test(c) && !/father|mother|student/.test(c)) : -1;
+      if (ni !== -1){
+        headerRow = i;
+        nameIdx = ni;
+        emailIdx = r.findIndex(c => /e[\s-]?mail/.test(c));
+        idIdx    = r.findIndex(c => /(faculty|emp|employee)\s*(id|code|no)|^id$|^code$/.test(c));
+        deptIdx  = r.findIndex(c => /dept|department|branch|school/.test(c));
+        desgIdx  = r.findIndex(c => /designation|position|title|role|post/.test(c));
+        break;
+      }
+    }
+    if (headerRow === -1 || nameIdx === -1) return;
+
+    for (let i = headerRow + 1; i < rows.length; i++){
+      const r = rows[i];
+      if (!r) continue;
+      const name = cleanCell(r[nameIdx]);
+      if (!name || name.length < 2) continue;
+      if (/^(total|sum|grand|average|sub\s*total)/i.test(name)) continue;
+      if (/^\d+$/.test(name)) continue;
+
+      const key = name.toUpperCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      faculty.push({
+        name,
+        email: emailIdx >= 0 ? cleanCell(r[emailIdx]) : '',
+        facultyId: idIdx >= 0 ? cleanCell(r[idIdx]) : '',
+        dept: deptIdx >= 0 ? cleanCell(r[deptIdx]) : '',
+        designation: desgIdx >= 0 ? cleanCell(r[desgIdx]) : '',
+        source: sn
+      });
+    }
+  });
+
+  return faculty;
+}
+
+/* =======================================================================
+   Students rebuild
+   ======================================================================= */
+function rebuildStudents(){
+  const map = new Map();
+  STATE.records.forEach(r => {
+    let s = map.get(r.enroll);
+    if (!s){
+      s = {enroll: r.enroll, name: r.name, course: r.course, batch: r.batch, hist: new Map()};
+      map.set(r.enroll, s);
+    }
+    if (r.name && r.name.length > (s.name || '').length) s.name = r.name;
+    if (r.course) s.course = r.course;
+    if (r.batch) s.batch = r.batch;
+    s.hist.set(r.dateKey, r.percent);
+  });
+  STATE.students = map;
+  STATE.dates = [...new Set(STATE.records.map(r => r.dateKey))].sort().reverse();
+}
+
+function ingestRecords(newRecs){
+  const key = r => r.enroll + '|' + r.dateKey;
+  const map = new Map(STATE.records.map(r => [key(r), r]));
+  newRecs.forEach(r => map.set(key(r), r));
+  STATE.records = [...map.values()];
+  rebuildStudents();
+}
+
+/* =======================================================================
+   Mentors & remarks persistence
+   ======================================================================= */
+function loadMentors(){
+  try {
+    const raw = localStorage.getItem(MENTOR_KEY);
+    STATE.mentors = raw ? JSON.parse(raw) : [];
+  } catch(e){ STATE.mentors = []; }
+  if (!Array.isArray(STATE.mentors)) STATE.mentors = [];
+  STATE.mentors.forEach(m => {
+    if (!Array.isArray(m.enrollments)) m.enrollments = [];
+    if (m.active === undefined) m.active = true;   // for auto-allocation
+  });
+  rebuildMentorIndex();
+}
+function persistMentors(){
+  try { localStorage.setItem(MENTOR_KEY, JSON.stringify(STATE.mentors)); } catch(e){}
+  rebuildMentorIndex();
+}
+function rebuildMentorIndex(){
+  STATE.mentorByEnroll = new Map();
+  STATE.mentors.forEach(m => m.enrollments.forEach(e => STATE.mentorByEnroll.set(normalizeEnroll(e), m)));
+}
+function mentorOf(enroll){ return STATE.mentorByEnroll.get(normalizeEnroll(enroll)) || null; }
+function mentorName(enroll){ const m = mentorOf(enroll); return m ? m.name : ''; }
+
+function loadRemarks(){
+  try {
+    const raw = localStorage.getItem(REMARK_KEY);
+    const obj = raw ? JSON.parse(raw) : {};
+    STATE.remarks = new Map(Object.entries(obj));
+  } catch(e){ STATE.remarks = new Map(); }
+}
+function persistRemarks(){
+  const obj = {};
+  STATE.remarks.forEach((v,k) => obj[k] = v);
+  try { localStorage.setItem(REMARK_KEY, JSON.stringify(obj)); } catch(e){}
+}
+function remarkOf(enroll){
+  const r = STATE.remarks.get(normalizeEnroll(enroll));
+  return r ? (r.text || '') : '';
+}
+function setRemark(enroll, text){
+  const key = normalizeEnroll(enroll);
+  if (!text || !text.trim()) STATE.remarks.delete(key);
+  else STATE.remarks.set(key, { text: text.trim(), updatedAt: new Date().toISOString() });
+  persistRemarks();
+}
+
+/* =======================================================================
+   Effective mentor (committed or pending)
+   ======================================================================= */
+function effectiveMentorId(enroll){
+  const k = normalizeEnroll(enroll);
+  if (STATE.pending.has(k)) return STATE.pending.get(k) || '';
+  const m = mentorOf(k);
+  return m ? m.id : '';
+}
+function effectiveMentorName(enroll){
+  const id = effectiveMentorId(enroll);
+  if (!id) return '';
+  const m = STATE.mentors.find(x => x.id === id);
+  return m ? m.name : '';
+}
+function hasPendingChange(enroll){
+  const k = normalizeEnroll(enroll);
+  if (!STATE.pending.has(k)) return false;
+  const pv = STATE.pending.get(k) || '';
+  const cv = mentorOf(k) ? mentorOf(k).id : '';
+  return pv !== cv;
+}
+function dirtyCount(){ return STATE.pending.size; }
+
+/* =======================================================================
+   Week selection
+   ======================================================================= */
+function autoPickDates(){
+  const ds = STATE.dates;
+  if (!ds.length){ STATE.thisDate = STATE.lastDate = null; return; }
+  const latest = ds[0];
+  const target = addDaysKey(latest, -7);
+  let best = null, bestDiff = Infinity;
+  ds.forEach(d => {
+    if (d === latest) return;
+    const diff = Math.abs(dayDiff(d, target));
+    if (diff < bestDiff){ bestDiff = diff; best = d; }
+  });
+  STATE.thisDate = latest;
+  STATE.lastDate = best;
+}
+
+/* =======================================================================
+   Row building
+   ======================================================================= */
+function buildRows(){
+  const rows = [];
+  STATE.students.forEach(s => {
+    let thisD = null, lastD = null, cur = null, prev = null;
+
+    if (STATE.basisMode === 'fixed'){
+      thisD = STATE.thisDate; lastD = STATE.lastDate;
+      if (thisD && s.hist.has(thisD)) cur = s.hist.get(thisD);
+      if (lastD && s.hist.has(lastD)) prev = s.hist.get(lastD);
+      if (cur === null && prev === null) return;
+    } else {
+      const ds = [...s.hist.keys()].sort();
+      if (!ds.length) return;
+      thisD = ds[ds.length - 1];
+      cur = s.hist.get(thisD);
+      const target = addDaysKey(thisD, -7);
+      let bestDiff = Infinity;
+      ds.forEach(d => {
+        if (d === thisD) return;
+        const diff = Math.abs(dayDiff(d, target));
+        if (diff < bestDiff){ bestDiff = diff; lastD = d; }
+      });
+      if (lastD) prev = s.hist.get(lastD);
+    }
+
+    const mentor = effectiveMentorName(s.enroll);
+    const mentorId = effectiveMentorId(s.enroll);
+    let delta = null;
+    if (cur !== null && prev !== null) delta = +(cur - prev).toFixed(2);
+
+    let status = 'nodata', statusLabel = 'No data';
+    if (cur === null){ status = 'nodata'; statusLabel = 'No data'; }
+    else if (cur === 0){ status = 'absent'; statusLabel = 'Absent'; }
+    else if (prev === null){ status = 'new'; statusLabel = 'No previous'; }
+    else if (delta > 0.01){ status = 'improved'; statusLabel = 'Improved'; }
+    else if (delta < -0.01){ status = 'declined'; statusLabel = 'Declined'; }
+    else { status = 'same'; statusLabel = 'No change'; }
+
+    rows.push({
+      enroll: s.enroll, name: s.name, course: s.course, batch: s.batch,
+      mentor: mentor, mentorId: mentorId,
+      cur: cur, prev: prev, delta: delta, status: status, statusLabel: statusLabel,
+      thisD: thisD, lastD: lastD,
+      remark: remarkOf(s.enroll)
+    });
+  });
+  return rows;
+}
+
+/* =======================================================================
+   Filtering & sorting
+   ======================================================================= */
+function applyFilters(rows){
+  const q = el('fSearch').value.trim().toLowerCase();
+  const fM = el('fMentor').value;
+  const fC = el('fCourse').value;
+  const fB = el('fBatch').value;
+  const fS = el('fStatus').value;
+  const minV = el('fMin').value === '' ? null : parseFloat(el('fMin').value);
+  const maxV = el('fMax').value === '' ? null : parseFloat(el('fMax').value);
+  const onlyA = el('fOnlyAssigned').checked;
+  const onlyU = el('fOnlyUnassigned').checked;
+  const onlyR = el('fOnlyRemark').checked;
+
+  return rows.filter(r => {
+    if (q && !(r.name.toLowerCase().includes(q) || r.enroll.toLowerCase().includes(q) || (r.remark||'').toLowerCase().includes(q))) return false;
+    if (fM === '__none__'){ if (r.mentor) return false; }
+    else if (fM && r.mentorId !== fM) return false;
+    if (fC && r.course !== fC) return false;
+    if (fB && r.batch !== fB) return false;
+    if (onlyA && !r.mentor) return false;
+    if (onlyU && r.mentor) return false;
+    if (onlyR && !r.remark) return false;
+    if (minV !== null && (r.cur === null || r.cur < minV)) return false;
+    if (maxV !== null && (r.cur === null || r.cur > maxV)) return false;
+    if (fS){
+      if (fS === 'low'){ if (r.cur === null || r.cur >= 75) return false; }
+      else if (r.status !== fS) return false;
+    }
+    return true;
+  });
+}
+
+function sortRows(rows){
+  const k = STATE.sortKey, dir = STATE.sortDir;
+  const val = r => {
+    switch(k){
+      case 'enroll': return r.enroll;
+      case 'name': return r.name || '';
+      case 'course': return r.course || '';
+      case 'batch': return r.batch || '';
+      case 'mentor': return r.mentor || '\uffff';
+      case 'prev': return r.prev === null ? -1 : r.prev;
+      case 'cur': return r.cur === null ? -1 : r.cur;
+      case 'delta': return r.delta === null ? -999 : r.delta;
+      case 'status': return r.statusLabel;
+      default: return r.enroll;
+    }
+  };
+  return rows.slice().sort((a,b) => {
+    const va = val(a), vb = val(b);
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+    return String(va).localeCompare(String(vb)) * dir;
+  });
+}
+
+/* =======================================================================
+   Stats
+   ======================================================================= */
+function renderStats(filtered){
+  const withCur = filtered.filter(r => r.cur !== null);
+  const avgCur = withCur.length ? withCur.reduce((s,r) => s + r.cur, 0) / withCur.length : 0;
+  const withPrev = filtered.filter(r => r.prev !== null);
+  const avgPrev = withPrev.length ? withPrev.reduce((s,r) => s + r.prev, 0) / withPrev.length : 0;
+  const improved = filtered.filter(r => r.status === 'improved').length;
+  const declined = filtered.filter(r => r.status === 'declined').length;
+  const low = withCur.filter(r => r.cur < 75).length;
+  const unassigned = filtered.filter(r => !r.mentor).length;
+  const withRemark = filtered.filter(r => r.remark).length;
+
+  el('statsBox').innerHTML = [
+    ['Students shown', filtered.length, ''],
+    ['Avg this week', avgCur.toFixed(1) + '%', ''],
+    ['Avg last week', avgPrev.toFixed(1) + '%', ''],
+    ['Improved', improved, 'color:#0f9d58'],
+    ['Declined', declined, 'color:#d93025'],
+    ['Below 75%', low, 'color:#e8a33d'],
+    ['With remark', withRemark, 'color:#1f4e9c'],
+    ['Unassigned', unassigned, 'color:#6b7688']
+  ].map(([k,v,st]) => `<div class="stat"><div class="k">${k}</div><div class="v" style="${st}">${v}</div></div>`).join('');
+}
+
+function pctCell(v){
+  if (v === null || v === undefined) return '<span class="muted">—</span>';
+  return v.toFixed(2) + '%';
+}
+
+function remarkCell(r, editable){
+  const low = (r.cur !== null && r.cur < 75) || r.status === 'absent';
+  const cls = 'remark-in' + (low && !r.remark ? ' low' : '');
+  const val = esc(r.remark || '');
+  if (editable){
+    return `<input type="text" class="${cls}" data-remark="${esc(r.enroll)}" value="${val}" placeholder="${low ? 'Follow-up needed…' : 'Add remark'}">`;
+  }
+  return val || '<span class="muted">—</span>';
+}
+
+/* =======================================================================
+   Dashboard table
+   ======================================================================= */
+function mainRow(r, n){
+  let dHtml = '<span class="muted">—</span>';
+  if (r.delta !== null){
+    const cls = r.delta > 0.01 ? 'up' : (r.delta < -0.01 ? 'down' : 'muted');
+    const sign = r.delta > 0 ? '+' : '';
+    dHtml = `<span class="${cls}">${sign}${r.delta.toFixed(2)}</span>`;
+  }
+  const pillCls = r.status === 'improved' ? 'p-ok'
+                : r.status === 'declined' ? 'p-bad'
+                : r.status === 'absent' ? 'p-bad'
+                : r.status === 'same' ? 'p-mute'
+                : r.status === 'new' ? 'p-warn' : 'p-mute';
+  const lowMark = (r.cur !== null && r.cur < 75) ? '<span class="chip">LOW</span>' : '';
+  return `<tr>
+    <td class="num">${n}</td>
+    <td>${esc(r.enroll)}</td>
+    <td>${esc(r.name)}${lowMark}</td>
+    <td>${esc(r.course || '—')}</td>
+    <td>${esc(r.batch || '—')}</td>
+    <td>${r.mentor ? esc(r.mentor) : '<span class="muted">Unassigned</span>'}</td>
+    <td class="num">${pctCell(r.prev)}</td>
+    <td class="num"><b>${pctCell(r.cur)}</b></td>
+    <td class="num">${dHtml}</td>
+    <td><span class="pill ${pillCls}">${r.statusLabel}</span></td>
+    <td>${remarkCell(r, true)}</td>
+  </tr>`;
+}
+
+function renderTable(){
+  const tbody = el('mainTable').querySelector('tbody');
+  const size = parseInt(el('pageSize').value, 10);
+  const total = STATE.filtered.length;
+  const pages = size === 0 ? 1 : Math.max(1, Math.ceil(total / size));
+  if (STATE.page > pages) STATE.page = pages;
+  const start = size === 0 ? 0 : (STATE.page - 1) * size;
+  const slice = size === 0 ? STATE.filtered : STATE.filtered.slice(start, start + size);
+  const grouped = el('fGroupMentor').checked;
+
+  let html = '';
+  let counter = start;
+
+  if (grouped){
+    const groups = new Map();
+    slice.forEach(r => {
+      const k = r.mentor || '__UNASSIGNED__';
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(r);
+    });
+    const keys = [...groups.keys()].sort((a,b) => a === '__UNASSIGNED__' ? 1 : b === '__UNASSIGNED__' ? -1 : a.localeCompare(b));
+    keys.forEach(k => {
+      const arr = groups.get(k).sort((a,b) => a.enroll.localeCompare(b.enroll));
+      const title = k === '__UNASSIGNED__' ? '⚠ Unassigned' : '👤 ' + k;
+      html += `<tr class="group-head"><td colspan="11">${esc(title)} — ${arr.length} student(s)</td></tr>`;
+      arr.forEach(r => { counter++; html += mainRow(r, counter); });
+    });
+  } else {
+    slice.forEach(r => { counter++; html += mainRow(r, counter); });
+  }
+
+  tbody.innerHTML = html || `<tr><td colspan="11" style="text-align:center;padding:26px" class="muted">No records match the current filters.</td></tr>`;
+
+  el('rowInfo').textContent = `${total} student(s)`;
+  el('pageLabel').textContent = `Page ${STATE.page} / ${pages}`;
+  el('prevPage').disabled = STATE.page <= 1;
+  el('nextPage').disabled = STATE.page >= pages;
+}
+
+/* =======================================================================
+   Filter option rendering
+   ======================================================================= */
+function renderFilterOptions(){
+  const courses = [...new Set([...STATE.students.values()].map(s => s.course).filter(Boolean))].sort();
+  const batches = [...new Set([...STATE.students.values()].map(s => s.batch).filter(Boolean))].sort();
+
+  const cSel = el('fCourse');
+  const curC = cSel.value;
+  cSel.innerHTML = '<option value="">All courses</option>' + courses.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  cSel.value = courses.includes(curC) ? curC : '';
+
+  const bSel = el('fBatch');
+  const curB = bSel.value;
+  bSel.innerHTML = '<option value="">All batches</option>' + batches.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  bSel.value = batches.includes(curB) ? curB : '';
+
+  const mSel = el('fMentor');
+  const curM = mSel.value;
+  mSel.innerHTML = '<option value="">All mentors</option><option value="__none__">Unassigned</option>' +
+    STATE.mentors.map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
+  mSel.value = curM;
+
+  const ac = el('allocCourse');
+  const curAC = ac.value;
+  ac.innerHTML = '<option value="">All courses</option>' + courses.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  ac.value = courses.includes(curAC) ? curAC : '';
+
+  const ab = el('allocBatch');
+  const curAB = ab.value;
+  ab.innerHTML = '<option value="">All batches</option>' + batches.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  ab.value = batches.includes(curAB) ? curAB : '';
+
+  const af = el('allocMentorFilter');
+  const curAF = af.value;
+  af.innerHTML = '<option value="">All mentor statuses</option><option value="__none__">Unassigned only</option>' +
+    STATE.mentors.map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
+  af.value = curAF;
+
+  const am = el('allocMentor');
+  const curAM = am.value;
+  am.innerHTML = STATE.mentors.map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join('') ||
+    '<option value="">— add a mentor first —</option>';
+  if (curAM && STATE.mentors.some(m => m.id === curAM)) am.value = curAM;
+}
+
+function renderDateSelectors(){
+  const opts = STATE.dates.map(d => `<option value="${d}">${prettyDate(d)}</option>`).join('');
+  el('selThis').innerHTML = opts;
+  el('selLast').innerHTML = '<option value="">— none —</option>' + opts;
+  el('selThis').value = STATE.thisDate || '';
+  el('selLast').value = STATE.lastDate || '';
+
+  const gap = (STATE.thisDate && STATE.lastDate) ? dayDiff(STATE.thisDate, STATE.lastDate) : null;
+  el('dateNote').textContent = gap === null
+    ? 'Only one date available — comparison will show "No previous".'
+    : `Comparing ${prettyDate(STATE.lastDate)} → ${prettyDate(STATE.thisDate)} (gap: ${gap} days).`;
+
+  /* Live preview: count students whose data matches the selected dates */
+  const preview = el('datePreview');
+  if (!preview) return;
+  if (!STATE.students.size){ preview.innerHTML = ''; return; }
+
+  const stArr = [...STATE.students.values()];
+  const thisCount = STATE.thisDate  ? stArr.filter(s => s.hist.has(STATE.thisDate)).length  : 0;
+  const lastCount = STATE.lastDate  ? stArr.filter(s => s.hist.has(STATE.lastDate)).length  : 0;
+  const bothCount = (STATE.thisDate && STATE.lastDate)
+    ? stArr.filter(s => s.hist.has(STATE.thisDate) && s.hist.has(STATE.lastDate)).length : 0;
+
+  if (!STATE.thisDate){
+    preview.innerHTML = '';
+    return;
+  }
+  const okStyle  = 'background:#e5f6ec;border:1px solid #a8ddc0;color:#0b7a44;padding:10px 14px;border-radius:9px;font-size:12.5px;line-height:1.7';
+  const warnTxt  = bothCount === 0 ? ' <b style="color:#d93025">⚠ No students share both dates — check your selection.</b>' : '';
+  preview.innerHTML = `<div style="${okStyle}">
+    📅 <b>This week</b> (${prettyDate(STATE.thisDate)}): <b>${thisCount}</b> students &nbsp;|&nbsp;
+    📅 <b>Last week</b> (${STATE.lastDate ? prettyDate(STATE.lastDate) : '—'}): <b>${lastCount}</b> students &nbsp;|&nbsp;
+    🔄 <b>Both dates</b> (will show Δ change): <b>${bothCount}</b> students${warnTxt}
+    <br><span style="color:#6b7688;font-size:11.5px">👉 Switch to <b>Dashboard</b> tab to see the updated student table.</span>
+  </div>`;
+}
+
+function renderSheetTable(){
+  /* Build per-sheet attendance stats from STATE.records */
+  const stats = {};
+  STATE.records.forEach(r => {
+    if (!stats[r.sheet]) stats[r.sheet] = {sum: 0, n: 0, low: 0};
+    stats[r.sheet].sum += r.percent;
+    stats[r.sheet].n++;
+    if (r.percent < 75) stats[r.sheet].low++;
+  });
+
+  const sorted = STATE.sheetInfo.slice().sort((a,b) => (b.dateKey||'').localeCompare(a.dateKey||''));
+
+  el('sheetTable').querySelector('tbody').innerHTML = sorted.map(s => {
+    const st   = stats[s.sheet] || {sum:0, n:0, low:0};
+    const avg  = st.n ? (st.sum / st.n).toFixed(1) : null;
+    const lowN = st.n ? st.low : 0;
+    const lowP = st.n ? ((st.low / st.n)*100).toFixed(0) : null;
+
+    const isThis = s.dateKey && s.dateKey === STATE.thisDate;
+    const isLast = s.dateKey && s.dateKey === STATE.lastDate;
+
+    let rowBg = '';
+    let roleBadge = '<span class="muted" style="font-size:11px">—</span>';
+    if (isThis && isLast) {
+      rowBg = 'background:#eef3fb';
+      roleBadge = '<span class="pill p-ok" style="font-size:10.5px">This Week</span>&nbsp;<span class="pill p-warn" style="font-size:10.5px">Last Week</span>';
+    } else if (isThis) {
+      rowBg = 'background:#e5f6ec;border-left:3px solid #0f9d58';
+      roleBadge = '<span class="pill p-ok" style="font-size:10.5px">✔ This Week</span>';
+    } else if (isLast) {
+      rowBg = 'background:#fff8e6;border-left:3px solid #e8a33d';
+      roleBadge = '<span class="pill p-warn" style="font-size:10.5px">← Last Week</span>';
+    }
+
+    const avgStyle = avg !== null && parseFloat(avg) < 75 ? 'color:#d93025;font-weight:700' : 'color:#0b7a44;font-weight:600';
+    const avgTxt   = avg !== null ? avg + '%' : '<span class="muted">—</span>';
+    const lowTxt   = lowP !== null
+      ? `${lowN} <span class="muted" style="font-size:11px">(${lowP}%)</span>`
+      : '<span class="muted">—</span>';
+
+    return `<tr style="${rowBg}">
+      <td><span style="font-size:12px">${esc(s.sheet)}</span></td>
+      <td>${esc(s.batch)}</td>
+      <td>${s.dateKey ? prettyDate(s.dateKey) : '<span class="muted">—</span>'}</td>
+      <td class="num">${s.count}</td>
+      <td class="num" style="${avgStyle}">${avgTxt}</td>
+      <td class="num">${lowTxt}</td>
+      <td>${roleBadge}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* =======================================================================
+   Mentor list panel
+   ======================================================================= */
+function renderMentorList(){
+  const list = el('mentorList');
+  el('mentorCount').textContent = STATE.mentors.length ? `(${STATE.mentors.length})` : '';
+
+  if (!STATE.mentors.length){
+    list.innerHTML = '<li class="muted" style="justify-content:center">No mentors yet — import faculty above or add one manually.</li>';
+    return;
+  }
+
+  const curSel = el('allocMentor').value;
+  list.innerHTML = STATE.mentors.map((m, idx) => {
+    const n = m.enrollments.length;
+    const rank = idx + 1;
+    const initials = (m.name || '?').split(/\s+/).slice(0,2).map(s => s[0]).join('').toUpperCase();
+    return `
+    <li data-id="${m.id}" class="${m.id === curSel ? 'active' : ''}">
+      <div style="min-width:0;display:flex;align-items:center;gap:6px">
+        <span class="avatar">${esc(initials)}</span>
+        <div style="min-width:0">
+          <div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            <span class="rank">#${rank}</span>${esc(m.name)}
+          </div>
+          <div class="meta">${m.facultyId ? 'ID: '+esc(m.facultyId)+' • ' : ''}${esc(m.email || '')} ${n} student(s)</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:2px">
+        <button class="ghost" data-act="rename" title="Rename">✎</button>
+        <button class="ghost" data-act="clear" title="Clear assignments">⊘</button>
+        <button class="ghost" data-act="del" style="color:#d93025" title="Delete mentor">✖</button>
+      </div>
+    </li>`;
+  }).join('');
+}
+
+function sortMentorByRoll(){
+  STATE.mentors.sort((a,b) => {
+    const minA = a.enrollments.length ? a.enrollments.map(normalizeEnroll).sort()[0] : '￿';
+    const minB = b.enrollments.length ? b.enrollments.map(normalizeEnroll).sort()[0] : '￿';
+    if (minA === '￿' && minB !== '￿') return 1;
+    if (minB === '￿' && minA !== '￿') return -1;
+    return minA.localeCompare(minB);
+  });
+  persistMentors();
+  refresh();
+}
+
+/* =======================================================================
+   Auto-allocation (NEW)
+   ======================================================================= */
+function renderMentorCheckboxes(){
+  const box = el('mentorCheckboxes');
+  if (!STATE.mentors.length){
+    box.innerHTML = '<span class="small muted">Add mentors first.</span>';
+    return;
+  }
+  box.innerHTML = STATE.mentors.map(m => `
+    <label class="mentor-chk ${m.active !== false ? 'checked' : ''}" data-id="${m.id}">
+      <input type="checkbox" data-mentor-chk="${m.id}" ${m.active !== false ? 'checked' : ''}>
+      ${esc(m.name)}
+    </label>`).join('');
+}
+
+function shuffleArr(a){
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function runAutoAllocation(){
+  const facs = STATE.mentors.filter(m => m.active !== false);
+  if (!STATE.students.size){ alert('⚠️ Upload the attendance file first.'); return; }
+  if (!facs.length){ alert('⚠️ Select at least one mentor (tick the checkboxes).'); return; }
+  if (!confirm(`This will replace ALL current mentor assignments with an equal distribution among ${facs.length} mentor(s).\n\nContinue?`)) return;
+
+  const strategy = el('autoStrategy').value;
+  const n = facs.length;
+  const list = [...STATE.students.values()];
+
+  if (strategy === 'random') shuffleArr(list);
+  else list.sort((a,b) => a.enroll.localeCompare(b.enroll, undefined, {numeric: true}));
+
+  const map = {};
+
+  if (strategy === 'block'){
+    const total = list.length;
+    const base = Math.floor(total / n);
+    const rem = total % n;
+    let idx = 0;
+    facs.forEach((m, i) => {
+      const count = base + (i < rem ? 1 : 0);
+      for (let k = 0; k < count && idx < total; k++, idx++){
+        map[list[idx].enroll] = m.id;
+      }
+    });
+  } else if (strategy === 'class'){
+    const groups = {};
+    list.forEach(s => (groups[s.course || 'General'] = groups[s.course || 'General'] || []).push(s));
+    let counter = 0;
+    Object.keys(groups).sort().forEach(g => {
+      groups[g].forEach(s => { map[s.enroll] = facs[counter % n].id; counter++; });
+    });
+  } else {
+    list.forEach((s, i) => { map[s.enroll] = facs[i % n].id; });
+  }
+
+  // Clear all current assignments
+  STATE.mentors.forEach(m => { m.enrollments = []; });
+
+  // Apply new mapping
+  Object.entries(map).forEach(([enroll, mid]) => {
+    const m = STATE.mentors.find(x => x.id === mid);
+    if (m) m.enrollments.push(normalizeEnroll(enroll));
+  });
+
+  persistMentors();
+  STATE.pending.clear();
+  STATE.allocPage = 1; // reset to first page after allocation
+
+  // Show summary (non-blocking: paint first, then refresh)
+  const counts = {};
+  Object.values(map).forEach(id => counts[id] = (counts[id] || 0) + 1);
+  const vals = Object.values(counts);
+  const spread = vals.length ? (Math.max(...vals) - Math.min(...vals)) : 0;
+  const msg = `✅ ${list.length} students allocated to ${n} mentor(s).\nLoad spread: ${spread} (${spread <= 1 ? 'perfect balance' : 'slight imbalance'})`;
+
+  // Defer the heavy DOM re-render so the browser isn't frozen — works on low-end PCs
+  el('allocTable').querySelector('tbody').innerHTML =
+    '<tr><td colspan="7" style="text-align:center;padding:30px;color:#1f4e9c;font-weight:600">⏳ Rendering allocation table…</td></tr>';
+  setTimeout(() => {
+    refresh();
+    alert(msg);
+  }, 0);
+}
+
+/* =======================================================================
+   Allocation table
+   ======================================================================= */
+function allocFilteredStudents(){
+  const q = el('allocSearch').value.trim().toLowerCase();
+  const c = el('allocCourse').value;
+  const b = el('allocBatch').value;
+  const mf = el('allocMentorFilter').value;
+  const onlyU = el('allocUnassigned').checked;
+  const lowOnly = el('allocLowOnly').checked;
+  const thisD = STATE.thisDate;
+
+  return [...STATE.students.values()]
+    .filter(s => {
+      const remark = remarkOf(s.enroll);
+      if (q && !(s.name.toLowerCase().includes(q) || s.enroll.toLowerCase().includes(q) || remark.toLowerCase().includes(q))) return false;
+      if (c && s.course !== c) return false;
+      if (b && s.batch !== b) return false;
+      const effMid = effectiveMentorId(s.enroll);
+      if (onlyU && effMid) return false;
+      if (mf === '__none__'){ if (effMid) return false; }
+      else if (mf && effMid !== mf) return false;
+      if (lowOnly){
+        if (thisD === null) return false;
+        const pct = s.hist.get(thisD);
+        if (pct === undefined || pct >= 75) return false;
+      }
+      return true;
+    })
+    .sort((a,b2) => a.enroll.localeCompare(b2.enroll));
+}
+
+function renderAllocTable(){
+  const students = allocFilteredStudents();
+  const total = students.length;
+  el('studentCount').textContent = `(${total})`;
+  const grouped = el('allocGroupMentor').checked;
+  const thisD = STATE.thisDate;
+  const mentorOpts = STATE.mentors.map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
+
+  /* ---- pagination (disabled when grouped, show all in groups) ---- */
+  const pgSize = grouped ? 0 : STATE.allocPageSize;
+  const pages  = pgSize === 0 ? 1 : Math.max(1, Math.ceil(total / pgSize));
+  if (STATE.allocPage > pages) STATE.allocPage = pages;
+  const pgStart = pgSize === 0 ? 0 : (STATE.allocPage - 1) * pgSize;
+  const slice   = pgSize === 0 ? students : students.slice(pgStart, pgStart + pgSize);
+
+  const rowHtml = s => {
+    const effMid = effectiveMentorId(s.enroll);
+    const curPct = thisD !== null ? s.hist.get(thisD) : null;
+    const low = curPct !== undefined && curPct !== null && curPct < 75;
+    const remark = remarkOf(s.enroll);
+    const remarkCls = 'remark-in' + (low && !remark ? ' low' : '');
+    const lowMark = low ? `<span class="chip">${curPct.toFixed(1)}%</span>` : '';
+    const dirty = hasPendingChange(s.enroll);
+    const opts = `<option value="">— Unassigned —</option>` +
+      mentorOpts.replace(new RegExp(`value="${effMid}"`), `value="${effMid}" selected`);
+    return `<tr class="${dirty ? 'dirty' : ''}">
+      <td><input type="checkbox" class="rowchk" data-enroll="${esc(s.enroll)}" ${STATE.selected.has(s.enroll) ? 'checked' : ''}></td>
+      <td><b>${esc(s.enroll)}</b></td>
+      <td>${esc(s.name)}${lowMark}</td>
+      <td>${esc(s.course || '—')}</td>
+      <td>${esc(s.batch || '—')}</td>
+      <td>
+        <select class="mentor-sel" data-mentor="${esc(s.enroll)}">
+          ${opts}
+        </select>
+      </td>
+      <td><input type="text" class="${remarkCls}" data-remark2="${esc(s.enroll)}" value="${esc(remark)}" placeholder="${low ? 'Follow-up needed…' : 'Add remark'}"></td>
+    </tr>`;
+  };
+
+  let html = '';
+  if (grouped){
+    const groups = new Map();
+    students.forEach(s => {
+      const mid = effectiveMentorId(s.enroll);
+      const k = mid || '__UNASSIGNED__';
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(s);
+    });
+    const order = STATE.mentors.map(m => m.id).filter(id => groups.has(id));
+    if (groups.has('__UNASSIGNED__')) order.push('__UNASSIGNED__');
+    order.forEach(k => {
+      const arr = groups.get(k).sort((a,b) => a.enroll.localeCompare(b.enroll));
+      const title = k === '__UNASSIGNED__' ? '⚠ Unassigned students' : '👤 ' + (STATE.mentors.find(x => x.id === k) || {}).name;
+      html += `<tr class="group-head"><td colspan="7">${esc(title)} — ${arr.length} student(s)</td></tr>`;
+      arr.forEach(s => { html += rowHtml(s); });
+    });
+  } else {
+    html = slice.map(rowHtml).join('');
+  }
+
+  el('allocTable').querySelector('tbody').innerHTML = html ||
+    `<tr><td colspan="7" style="text-align:center;padding:24px" class="muted">No students. Upload an Excel file first.</td></tr>`;
+
+  /* pager controls */
+  const pager = el('allocPager');
+  if (pager) pager.style.display = grouped ? 'none' : 'flex';
+  if (el('allocRowInfo'))  el('allocRowInfo').textContent  = `${total} student(s)`;
+  if (el('allocPageLabel'))el('allocPageLabel').textContent = pgSize === 0 ? '' : `Page ${STATE.allocPage} / ${pages}`;
+  if (el('allocPrev'))     el('allocPrev').disabled  = STATE.allocPage <= 1;
+  if (el('allocNext'))     el('allocNext').disabled  = STATE.allocPage >= pages;
+  if (el('allocPageSize')) el('allocPageSize').value  = String(STATE.allocPageSize);
+
+  el('allocCount').textContent = `${STATE.selected.size} selected of ${total} shown`;
+  renderSaveBar();
+}
+
+function renderSaveBar(){
+  const n = dirtyCount();
+  const bar = el('saveBar');
+  const badge = el('dirtyBadge');
+  const status = el('saveStatus');
+  const saveBtn = el('saveAssignments');
+  const cancelBtn = el('cancelChanges');
+
+  if (n > 0){
+    bar.classList.add('dirty');
+    badge.classList.remove('hidden');
+    badge.textContent = `${n} unsaved change${n === 1 ? '' : 's'}`;
+    status.innerHTML = `<b style="color:#94631a">⚠ ${n} change${n === 1 ? '' : 's'} not yet saved.</b> Press <b>Save Assignments</b> to apply.`;
+    saveBtn.disabled = false;
+    cancelBtn.disabled = false;
+  } else {
+    bar.classList.remove('dirty');
+    badge.classList.add('hidden');
+    status.textContent = 'No unsaved changes';
+    saveBtn.disabled = true;
+    cancelBtn.disabled = true;
+  }
+}
+
+/* =======================================================================
+   Faculty preview
+   ======================================================================= */
+function renderFacultyPreview(){
+  const list = el('facList');
+  const fac = STATE.facultyPreview;
+  if (!fac.length){
+    list.innerHTML = '<li class="muted" style="justify-content:center">No file uploaded yet.</li>';
+    el('facAddAll').disabled = true;
+    el('facClear').disabled = true;
+    return;
+  }
+  const existing = new Set(STATE.mentors.map(m => (m.name || '').toUpperCase().trim()));
+  const newCount = fac.filter(f => !existing.has(f.name.toUpperCase().trim())).length;
+  el('facInfo').textContent = `${fac.length} faculty found • ${newCount} new`;
+  el('facAddAll').disabled = newCount === 0;
+  el('facClear').disabled = false;
+
+  list.innerHTML = fac.map(f => {
+    const dup = existing.has(f.name.toUpperCase().trim());
+    return `<li class="${dup ? 'existing' : ''}">
+      <div><b>${esc(f.name)}</b>${f.facultyId ? ' <span class="muted">· '+esc(f.facultyId)+'</span>' : ''}</div>
+      <div class="muted">${esc(f.dept || '')} ${f.email ? '· '+esc(f.email) : ''} ${dup ? '<span class="badge">already added</span>' : ''}</div>
+    </li>`;
+  }).join('');
+}
+
+function addFacultyAsMentors(){
+  const existing = new Set(STATE.mentors.map(m => (m.name || '').toUpperCase().trim()));
+  let added = 0;
+  STATE.facultyPreview.forEach(f => {
+    const key = f.name.toUpperCase().trim();
+    if (existing.has(key)) return;
+    STATE.mentors.push({
+      id: 'm' + Date.now() + Math.random().toString(36).slice(2,6),
+      name: f.name,
+      email: f.email || '',
+      facultyId: f.facultyId || '',
+      dept: f.dept || '',
+      designation: f.designation || '',
+      enrollments: [],
+      active: true
+    });
+    existing.add(key);
+    added++;
+  });
+  persistMentors();
+  refresh();
+  alert(`Added ${added} mentor(s) from the faculty list.`);
+}
+
+/* =======================================================================
+   Save / cancel assignments
+   ======================================================================= */
+function saveAssignments(){
+  if (!STATE.pending.size) return;
+
+  STATE.pending.forEach((newMid, enroll) => {
+    const key = normalizeEnroll(enroll);
+    STATE.mentors.forEach(m => {
+      m.enrollments = m.enrollments.filter(x => normalizeEnroll(x) !== key);
+    });
+    if (newMid){
+      const target = STATE.mentors.find(m => m.id === newMid);
+      if (target && !target.enrollments.some(x => normalizeEnroll(x) === key)){
+        target.enrollments.push(key);
+      }
+    }
+  });
+
+  persistMentors();
+  STATE.pending.clear();
+  refresh();
+  const bar = el('saveBar');
+  bar.style.background = '#e5f6ec';
+  bar.style.borderColor = '#a8ddc0';
+  setTimeout(() => { bar.style.background = ''; bar.style.borderColor = ''; renderSaveBar(); }, 900);
+}
+
+function cancelAssignments(){
+  if (!STATE.pending.size) return;
+  if (!confirm(`Discard ${STATE.pending.size} unsaved change(s)?`)) return;
+  STATE.pending.clear();
+  refresh();
+}
+
+/* =======================================================================
+   Refresh everything
+   ======================================================================= */
+function refresh(){
+  const hasData = STATE.students.size > 0;
+  el('emptyState').classList.toggle('hidden', hasData);
+  el('dashBody').classList.toggle('hidden', !hasData);
+
+  renderFilterOptions();
+  renderDateSelectors();
+  renderSheetTable();
+  renderMentorList();
+  renderFacultyPreview();
+  renderMentorCheckboxes();
+
+  if (hasData){
+    const all = buildRows();
+    STATE.filtered = sortRows(applyFilters(all));
+    renderStats(STATE.filtered);
+    renderTable();
+    el('filterInfo').textContent = `${all.length} students • ${STATE.filtered.length} shown`;
+  }
+  renderAllocTable();
+  el('fileInfo').textContent = STATE.fileName
+    ? `Loaded: ${STATE.fileName} • ${STATE.records.length} records • ${STATE.students.size} students`
+    : 'No file loaded';
+}
+
+/* =======================================================================
+   PDF export (unchanged)
+   ======================================================================= */
+function exportPDF(){
+  if (!STATE.filtered.length){ alert('Nothing to export with the current filters.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({orientation:'landscape', unit:'pt', format:'a4'});
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 30;
+
+  doc.setFillColor(31,78,156);
+  doc.rect(0,0,pageW,54,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(15); doc.setFont(undefined,'bold');
+  doc.text('Mentor–Student Weekly Attendance Report', margin, 24);
+  doc.setFontSize(9); doc.setFont(undefined,'normal');
+  const basis = STATE.basisMode === 'fixed'
+    ? `Last week: ${STATE.lastDate ? prettyDate(STATE.lastDate) : '—'}   |   This week: ${STATE.thisDate ? prettyDate(STATE.thisDate) : '—'}`
+    : 'Basis: latest available record per student (vs. record nearest 7 days earlier)';
+  doc.text(basis, margin, 40);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, pageW - margin, 40, {align:'right'});
+
+  doc.setTextColor(30,40,60);
+  let y = 72;
+
+  const fparts = [];
+  if (el('fMentor').value) fparts.push('Mentor: ' + (el('fMentor').value === '__none__' ? 'Unassigned' : (STATE.mentors.find(m => m.id === el('fMentor').value)||{}).name));
+  if (el('fCourse').value) fparts.push('Course: ' + el('fCourse').value);
+  if (el('fBatch').value) fparts.push('Batch: ' + el('fBatch').value);
+  if (el('fStatus').value) fparts.push('Status: ' + el('fStatus').value);
+  if (el('fSearch').value) fparts.push('Search: ' + el('fSearch').value);
+  if (el('fOnlyRemark').checked) fparts.push('Only with remark');
+  if (el('fMin').value) fparts.push('Min %: ' + el('fMin').value);
+  if (el('fMax').value) fparts.push('Max %: ' + el('fMax').value);
+
+  doc.setFontSize(9);
+  doc.text(`Students: ${STATE.filtered.length}${fparts.length ? '   |   ' + fparts.join('   |   ') : ''}`, margin, y);
+  y += 16;
+
+  const withCur = STATE.filtered.filter(r => r.cur !== null);
+  const avgCur = withCur.length ? withCur.reduce((s,r) => s + r.cur, 0) / withCur.length : 0;
+  const withPrev = STATE.filtered.filter(r => r.prev !== null);
+  const avgPrev = withPrev.length ? withPrev.reduce((s,r) => s + r.prev, 0) / withPrev.length : 0;
+  const improved = STATE.filtered.filter(r => r.status === 'improved').length;
+  const declined = STATE.filtered.filter(r => r.status === 'declined').length;
+  const low = withCur.filter(r => r.cur < 75).length;
+  const withRmk = STATE.filtered.filter(r => r.remark).length;
+
+  doc.setFontSize(9.5);
+  doc.text(
+    `Avg this week: ${avgCur.toFixed(2)}%    Avg last week: ${avgPrev.toFixed(2)}%    Improved: ${improved}    Declined: ${declined}    Below 75%: ${low}    With remark: ${withRmk}`,
+    margin, y
+  );
+  y += 18;
+
+  const head = [['#','Roll Number','Name','Course','Batch','Mentor','Last %','This %','Change','Status','Follow-up Remark']];
+  const colStyles = {
+    0:{cellWidth:22, halign:'right'},
+    1:{cellWidth:80},
+    2:{cellWidth:135},
+    3:{cellWidth:62},
+    4:{cellWidth:48},
+    5:{cellWidth:82},
+    6:{cellWidth:44, halign:'right'},
+    7:{cellWidth:44, halign:'right'},
+    8:{cellWidth:42, halign:'right'},
+    9:{cellWidth:56},
+    10:{cellWidth:150}
+  };
+
+  const makeBody = rows => rows.map((r, i) => [
+    i + 1,
+    r.enroll,
+    r.name,
+    r.course || '—',
+    r.batch || '—',
+    r.mentor || 'Unassigned',
+    r.prev === null ? '—' : r.prev.toFixed(2) + '%',
+    r.cur === null ? '—' : r.cur.toFixed(2) + '%',
+    r.delta === null ? '—' : (r.delta > 0 ? '+' : '') + r.delta.toFixed(2),
+    r.statusLabel,
+    r.remark || ''
+  ]);
+
+  const groupByMentor = el('fGroupMentor').checked;
+
+  const tableOpts = (body, startY, title) => {
+    if (title){
+      doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.setTextColor(31,78,156);
+      doc.text(title, margin, startY);
+      startY += 6;
+      doc.setFont(undefined,'normal'); doc.setTextColor(30,40,60);
+    }
+    doc.autoTable({
+      head, body, startY, margin:{left:margin, right:margin, top:60},
+      styles:{fontSize:7.2, cellPadding:3, overflow:'linebreak', lineColor:[225,232,242], lineWidth:.5},
+      headStyles:{fillColor:[31,78,156], textColor:255, fontSize:7.6, fontStyle:'bold'},
+      alternateRowStyles:{fillColor:[246,249,254]},
+      columnStyles: colStyles,
+      didParseCell: data => {
+        if (data.section === 'body'){
+          if (data.column.index === 8){
+            const v = String(data.cell.raw);
+            if (v.startsWith('+')) data.cell.styles.textColor = [15,157,88];
+            else if (v.startsWith('-')) data.cell.styles.textColor = [217,48,37];
+          }
+          if (data.column.index === 9){
+            const v = String(data.cell.raw);
+            if (v === 'Declined' || v === 'Absent') data.cell.styles.textColor = [217,48,37];
+            else if (v === 'Improved') data.cell.styles.textColor = [15,157,88];
+          }
+        }
+      },
+      didDrawPage: () => {
+        const ph = doc.internal.pageSize.getHeight();
+        doc.setFontSize(8); doc.setTextColor(120,130,150);
+        doc.text('Mentor–Student Attendance Report', margin, ph - 14);
+        const pn = doc.internal.getNumberOfPages();
+        doc.text(`Page ${pn}`, pageW - margin, ph - 14, {align:'right'});
+      }
+    });
+    return doc.lastAutoTable.finalY + 22;
+  };
+
+  if (groupByMentor){
+    const groups = new Map();
+    STATE.filtered.forEach(r => {
+      const k = r.mentor || 'Unassigned';
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(r);
+    });
+    const names = [...groups.keys()].sort((a,b) => a === 'Unassigned' ? 1 : b === 'Unassigned' ? -1 : a.localeCompare(b));
+    names.forEach(name => {
+      const rows = groups.get(name).sort((a,b) => a.enroll.localeCompare(b.enroll));
+      const wc = rows.filter(r => r.cur !== null);
+      const avg = wc.length ? (wc.reduce((s,r) => s + r.cur, 0) / wc.length).toFixed(2) : '—';
+      const title = `${name}  —  ${rows.length} student(s)  •  avg this week: ${avg}%`;
+      if (y > doc.internal.pageSize.getHeight() - 120){ doc.addPage(); y = 70; }
+      y = tableOpts(makeBody(rows), y, title);
+    });
+  } else {
+    const sorted = STATE.filtered.slice().sort((a,b) => (a.mentor||'\uffff').localeCompare(b.mentor||'\uffff') || a.enroll.localeCompare(b.enroll));
+    tableOpts(makeBody(sorted), y, null);
+  }
+
+  const stamp = new Date().toISOString().slice(0,10);
+  doc.save(`Attendance_Report_${stamp}.pdf`);
+}
+
+/* =======================================================================
+   Events
+   ======================================================================= */
+function switchTab(name){
+  document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tabpane').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+}
+
+function handleAttendanceFiles(files){
+  const file = files && files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array', cellDates:false});
+      const {records, sheets} = parseWorkbook(wb);
+      if (!records.length){
+        alert('No attendance rows could be read. Please check the file structure.');
+        return;
+      }
+      const sMap = new Map(STATE.sheetInfo.map(s => [s.sheet, s]));
+      sheets.forEach(s => sMap.set(s.sheet, s));
+      STATE.sheetInfo = [...sMap.values()];
+      ingestRecords(records);
+      STATE.fileName = file.name;
+      autoPickDates();
+      refresh();
+    } catch(err){
+      console.error(err);
+      alert('Failed to read the file: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function handleFacultyFiles(files){
+  const file = files && files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array', cellDates:false});
+      const faculty = parseFacultyWorkbook(wb);
+      if (!faculty.length){
+        alert('Could not detect any faculty rows. Make sure a sheet has a "Name" column header.');
+        return;
+      }
+      STATE.facultyPreview = faculty;
+      renderFacultyPreview();
+    } catch(err){
+      console.error(err);
+      alert('Failed to read faculty file: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function wire(){
+  document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+  /* attendance upload */
+  const dz = el('dropZone');
+  dz.addEventListener('click', () => el('fileInput').click());
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('hover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('hover'));
+  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('hover'); handleAttendanceFiles(e.dataTransfer.files); });
+  el('fileInput').addEventListener('change', e => handleAttendanceFiles(e.target.files));
+  el('btnUpload2').addEventListener('click', () => el('fileInput').click());
+
+  el('btnClearData').addEventListener('click', () => {
+    if (!confirm('Clear all loaded attendance data? (Mentors & remarks are kept)')) return;
+    STATE.records = []; STATE.sheetInfo = []; STATE.fileName = '';
+    rebuildStudents(); autoPickDates(); refresh();
+  });
+
+  /* faculty upload */
+  const fd = el('facDrop');
+  fd.addEventListener('click', () => el('facInput').click());
+  fd.addEventListener('dragover', e => { e.preventDefault(); fd.classList.add('hover'); });
+  fd.addEventListener('dragleave', () => fd.classList.remove('hover'));
+  fd.addEventListener('drop', e => { e.preventDefault(); fd.classList.remove('hover'); handleFacultyFiles(e.dataTransfer.files); });
+  el('facInput').addEventListener('change', e => handleFacultyFiles(e.target.files));
+  el('facAddAll').addEventListener('click', addFacultyAsMentors);
+  el('facClear').addEventListener('click', () => { STATE.facultyPreview = []; renderFacultyPreview(); el('facInput').value = ''; });
+
+  /* dashboard filters */
+  ['fSearch','fMentor','fCourse','fBatch','fStatus','fMin','fMax','fOnlyAssigned','fOnlyUnassigned','fOnlyRemark','fGroupMentor'].forEach(id => {
+    el(id).addEventListener('input', () => { STATE.page = 1; refresh(); });
+    el(id).addEventListener('change', () => { STATE.page = 1; refresh(); });
+  });
+  el('btnReset').addEventListener('click', () => {
+    ['fSearch','fMin','fMax'].forEach(id => el(id).value = '');
+    ['fMentor','fCourse','fBatch','fStatus'].forEach(id => el(id).value = '');
+    ['fOnlyAssigned','fOnlyUnassigned','fOnlyRemark','fGroupMentor'].forEach(id => el(id).checked = false);
+    STATE.page = 1;
+    refresh();
+  });
+
+  document.querySelectorAll('#mainTable thead th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      const k = th.dataset.sort;
+      if (STATE.sortKey === k) STATE.sortDir *= -1;
+      else { STATE.sortKey = k; STATE.sortDir = 1; }
+      refresh();
+    });
+  });
+
+  el('pageSize').addEventListener('change', () => { STATE.page = 1; renderTable(); });
+  el('prevPage').addEventListener('click', () => { STATE.page--; renderTable(); });
+  el('nextPage').addEventListener('click', () => { STATE.page++; renderTable(); });
+
+  el('btnPdf').addEventListener('click', exportPDF);
+
+  /* week settings */
+  el('basisMode').addEventListener('change', () => {
+    STATE.basisMode = el('basisMode').value;
+    el('fixedDateRow').style.display = STATE.basisMode === 'fixed' ? 'flex' : 'none';
+    refresh();
+  });
+  el('selThis').addEventListener('change', () => { STATE.thisDate = el('selThis').value || null; refresh(); });
+  el('selLast').addEventListener('change', () => { STATE.lastDate = el('selLast').value || null; refresh(); });
+  el('autoDates').addEventListener('click', () => { autoPickDates(); refresh(); });
+
+  /* manual mentor add */
+  el('addMentor').addEventListener('click', () => {
+    const name = el('mentorName').value.trim();
+    if (!name){ alert('Enter a mentor name'); return; }
+    STATE.mentors.push({
+      id: 'm' + Date.now() + Math.random().toString(36).slice(2,6),
+      name, email: el('mentorEmail').value.trim(), facultyId: '', dept: '', designation: '',
+      enrollments: [], active: true
+    });
+    el('mentorName').value = ''; el('mentorEmail').value = '';
+    persistMentors(); refresh();
+  });
+
+  /* AUTO ALLOCATION */
+  el('runAutoAlloc').addEventListener('click', runAutoAllocation);
+  el('selectAllMentors').addEventListener('click', () => {
+    STATE.mentors.forEach(m => m.active = true);
+    persistMentors(); renderMentorCheckboxes();
+  });
+  el('selectNoMentors').addEventListener('click', () => {
+    STATE.mentors.forEach(m => m.active = false);
+    persistMentors(); renderMentorCheckboxes();
+  });
+  el('mentorCheckboxes').addEventListener('change', e => {
+    const cb = e.target.closest('input[data-mentor-chk]');
+    if (!cb) return;
+    const m = STATE.mentors.find(x => x.id === cb.dataset.mentorChk);
+    if (!m) return;
+    m.active = cb.checked;
+    persistMentors();
+    renderMentorCheckboxes();
+  });
+
+  /* mentor list actions */
+  el('mentorList').addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const li = e.target.closest('li');
+    const id = li.dataset.id;
+    const m = STATE.mentors.find(x => x.id === id);
+    if (!m) return;
+    if (btn.dataset.act === 'rename'){
+      const nn = prompt('New name for this mentor:', m.name);
+      if (nn && nn.trim()){ m.name = nn.trim(); persistMentors(); refresh(); }
+    } else if (btn.dataset.act === 'clear'){
+      if (confirm(`Remove all student assignments from ${m.name}?`)){
+        m.enrollments = [];
+        STATE.pending.forEach((mid, k) => { if (mid === m.id) STATE.pending.set(k, ''); });
+        persistMentors(); refresh();
+      }
+    } else if (btn.dataset.act === 'del'){
+      if (confirm(`Delete mentor ${m.name}? Their students become unassigned.`)){
+        STATE.mentors = STATE.mentors.filter(x => x.id !== id);
+        STATE.pending.forEach((mid, k) => { if (mid === id) STATE.pending.set(k, ''); });
+        persistMentors(); refresh();
+      }
+    }
+  });
+
+  el('sortMentorByRoll').addEventListener('click', sortMentorByRoll);
+
+  el('clearMentors').addEventListener('click', () => {
+    if (!confirm('Delete ALL mentors and the entire mapping?')) return;
+    STATE.mentors = [];
+    STATE.pending.clear();
+    persistMentors(); refresh();
+  });
+
+  el('exportMentors').addEventListener('click', () => {
+    const payload = { mentors: STATE.mentors, remarks: Object.fromEntries(STATE.remarks) };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'mentor_mapping_backup.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  el('importMentorsBtn').addEventListener('click', () => el('importMentors').click());
+  el('importMentors').addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        const mentors = Array.isArray(data) ? data : data.mentors;
+        const remarks = (!Array.isArray(data) && data.remarks) ? data.remarks : null;
+        if (!Array.isArray(mentors)) throw new Error('Invalid format');
+        mentors.forEach(m => {
+          if (!Array.isArray(m.enrollments)) m.enrollments = [];
+          if (m.active === undefined) m.active = true;
+        });
+        STATE.mentors = mentors;
+        if (remarks) STATE.remarks = new Map(Object.entries(remarks));
+        STATE.pending.clear();
+        persistMentors(); persistRemarks(); refresh();
+      } catch(err){ alert('Could not import: ' + err.message); }
+    };
+    r.readAsText(f);
+    e.target.value = '';
+  });
+
+  /* allocation filters */
+  ['allocSearch','allocCourse','allocBatch','allocMentorFilter','allocUnassigned','allocGroupMentor','allocLowOnly'].forEach(id => {
+    el(id).addEventListener('input',  () => { STATE.allocPage = 1; renderAllocTable(); });
+    el(id).addEventListener('change', () => { STATE.allocPage = 1; renderAllocTable(); });
+  });
+  el('allocMentor').addEventListener('change', renderMentorList);
+
+  /* alloc table pager */
+  el('allocPageSize').addEventListener('change', () => {
+    STATE.allocPageSize = parseInt(el('allocPageSize').value, 10);
+    STATE.allocPage = 1;
+    renderAllocTable();
+  });
+  el('allocPrev').addEventListener('click', () => { STATE.allocPage--; renderAllocTable(); });
+  el('allocNext').addEventListener('click', () => { STATE.allocPage++; renderAllocTable(); });
+
+  /* checkboxes + inline select + remark */
+  el('allocTable').addEventListener('change', e => {
+    const cb = e.target.closest('input.rowchk');
+    if (cb){
+      if (cb.checked) STATE.selected.add(cb.dataset.enroll);
+      else STATE.selected.delete(cb.dataset.enroll);
+      el('allocCount').textContent = `${STATE.selected.size} selected`;
+      return;
+    }
+    const ms = e.target.closest('select.mentor-sel');
+    if (ms){
+      const enroll = normalizeEnroll(ms.dataset.mentor);
+      const mid = ms.value;
+      STATE.pending.set(enroll, mid || '');
+      const current = mentorOf(enroll) ? mentorOf(enroll).id : '';
+      if ((mid || '') === current) STATE.pending.delete(enroll);
+      renderAllocTable();
+      return;
+    }
+    const ri = e.target.closest('input[data-remark2]');
+    if (ri){
+      setRemark(ri.dataset.remark2, ri.value);
+      renderAllocTable();
+      return;
+    }
+  });
+
+  el('chkAll').addEventListener('change', e => {
+    const list = allocFilteredStudents();
+    if (e.target.checked) list.forEach(s => STATE.selected.add(s.enroll));
+    else list.forEach(s => STATE.selected.delete(s.enroll));
+    renderAllocTable();
+  });
+  el('selectAllFiltered').addEventListener('click', () => {
+    allocFilteredStudents().forEach(s => STATE.selected.add(s.enroll));
+    renderAllocTable();
+  });
+  el('clearSel').addEventListener('click', () => { STATE.selected.clear(); renderAllocTable(); });
+
+  /* bulk assign / unassign (staged) */
+  el('assignSelected').addEventListener('click', () => {
+    const mid = el('allocMentor').value;
+    if (!mid){ alert('Add / select a mentor first.'); return; }
+    if (!STATE.selected.size){ alert('Select at least one student.'); return; }
+    STATE.selected.forEach(enroll => {
+      const key = normalizeEnroll(enroll);
+      STATE.pending.set(key, mid);
+      const current = mentorOf(key) ? mentorOf(key).id : '';
+      if (mid === current) STATE.pending.delete(key);
+    });
+    STATE.selected.clear();
+    renderAllocTable();
+  });
+
+  el('unassignSelected').addEventListener('click', () => {
+    if (!STATE.selected.size){ alert('Select at least one student.'); return; }
+    STATE.selected.forEach(enroll => {
+      const key = normalizeEnroll(enroll);
+      STATE.pending.set(key, '');
+      const current = mentorOf(key) ? mentorOf(key).id : '';
+      if (!current) STATE.pending.delete(key);
+    });
+    STATE.selected.clear();
+    renderAllocTable();
+  });
+
+  /* Save / Cancel */
+  el('saveAssignments').addEventListener('click', saveAssignments);
+  el('cancelChanges').addEventListener('click', cancelAssignments);
+
+  /* dashboard inline remark */
+  el('mainTable').addEventListener('change', e => {
+    const ri = e.target.closest('input[data-remark]');
+    if (!ri) return;
+    setRemark(ri.dataset.remark, ri.value);
+    refresh();
+  });
+  el('mainTable').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.matches('input[data-remark]')) e.target.blur();
+  });
+
+  /* initial */
+  STATE.basisMode = el('basisMode').value;
+  el('fixedDateRow').style.display = 'flex';
+  loadMentors();
+  loadRemarks();
+  refresh();
+}
+
+document.addEventListener('DOMContentLoaded', wire);
+</script>
+
+<script>
+/* =======================================================================
+   FOLLOW-UPS TAB — original follow-up dashboard logic, unchanged.
+   Wrapped in its own scope so its function/variable names (parseWorkbook,
+   renderAll, comparison, …) cannot collide with the code above.
+   Only element ids (fu… prefix) and 5 CSS class names (fu-*) were renamed.
+   ======================================================================= */
+(function(){
+/* ==========================================================
+   GLOBAL STATE
+   ========================================================== */
+let lastRecords = [];      // records from last-week file
+let thisRecords = [];      // records from this-week file
+let comparison = [];       // joined comparison
+let mentorStats = [];      // aggregated mentor performance
+
+/* ==========================================================
+   EXCEL PARSING
+   ========================================================== */
+function categorize(att){
+  if(att>75) return "Above 75";
+  if(att>=60) return "60-75";
+  if(att>=40) return "40-60";
+  return "Below 40";
+}
+
+function parseWorkbook(wb){
+  const out=[];
+  wb.SheetNames.forEach(sheetName=>{
+    const sheet = wb.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet,{header:1,defval:""});
+    if(rows.length<2) return;
+
+    // locate header row: search first 3 rows for "Enrollment"
+    let headerRowIdx = 0;
+    for(let i=0;i<Math.min(3,rows.length);i++){
+      const joined = rows[i].map(x=>String(x).toLowerCase()).join(" ");
+      if(/enroll/.test(joined)){headerRowIdx=i;break;}
+    }
+    const headers = rows[headerRowIdx].map(h=>String(h));
+
+    let cEnroll=-1,cName=-1,cMentor=-1,cCat=-1,cRemark=-1,cAtt=-1;
+    headers.forEach((h,i)=>{
+      const H = h.toLowerCase();
+      if(/enroll/.test(H)) cEnroll=i;
+      else if(/mentor/.test(H)) cMentor=i;
+      else if(/category/.test(H)) cCat=i;
+      else if(/calling.*remark|remark/.test(H)) cRemark=i;
+      else if(/\d{2}[\/\-]\d{2}[\/\-]\d{4}/.test(H)) cAtt=i;
+      else if(/student/.test(H) || /^name$/i.test(H)) cName=i;
+    });
+    // fallbacks for weird headers
+    if(cEnroll===-1) cEnroll=1;
+    if(cName===-1) cName=3;
+    if(cAtt===-1) cAtt=4;
+    if(cCat===-1) cCat=cAtt+1;
+    if(cMentor===-1) cMentor=cCat+1;
+    if(cRemark===-1) cRemark=cCat+2;
+
+    for(let i=headerRowIdx+1;i<rows.length;i++){
+      const r = rows[i];
+      const enroll = String(r[cEnroll]||"").trim();
+      const name = String(r[cName]||"").trim();
+      if(!enroll || !name) continue;
+      if(/^enroll/i.test(enroll)) continue;
+      const att = parseFloat(r[cAtt]);
+      if(isNaN(att)) continue;
+      const mentor = String(r[cMentor]||"").trim() || "Unknown";
+      const cat = String(r[cCat]||"").trim() || categorize(att);
+      const remark = String(r[cRemark]||"").trim();
+      out.push({
+        enrollment: enroll,
+        name, mentor, semester: sheetName,
+        attendance: att, category: cat, remark,
+        hasRemark: remark.length > 0
+      });
+    }
+  });
+  return out;
+}
+
+/* ==========================================================
+   FILE UPLOAD HANDLERS
+   ========================================================== */
+function setupUploader(boxId, inputId, infoId, which){
+  const box = document.getElementById(boxId);
+  const input = document.getElementById(inputId);
+  const info = document.getElementById(infoId);
+
+  box.addEventListener("click",()=>input.click());
+  box.addEventListener("dragover",e=>{e.preventDefault();box.style.borderColor="#2e75b6";});
+  box.addEventListener("dragleave",()=>{box.style.borderColor="";});
+  box.addEventListener("drop",e=>{
+    e.preventDefault();
+    if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+  input.addEventListener("change",e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); });
+
+  function handleFile(file){
+    const reader = new FileReader();
+    reader.onload = e=>{
+      try{
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data,{type:"array"});
+        const recs = parseWorkbook(wb);
+        if(which==="last"){ lastRecords = recs; box.classList.add("loaded"); }
+        else { thisRecords = recs; box.classList.add("loaded-this"); }
+        info.textContent = `✔ ${file.name} — ${recs.length} students, ${wb.SheetNames.length} sheet(s)`;
+        tryCompare();
+      }catch(err){
+        alert("Error reading file: "+err.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+}
+setupUploader("fuUploadLast","fuFileLast","fuInfoLast","last");
+setupUploader("fuUploadThis","fuFileThis","fuInfoThis","this");
+
+/* ==========================================================
+   COMPARISON LOGIC
+   ========================================================== */
+function buildComparison(){
+  const lastMap = new Map(lastRecords.map(r=>[r.enrollment, r]));
+  const thisMap = new Map(thisRecords.map(r=>[r.enrollment, r]));
+  const all = new Set([...lastMap.keys(), ...thisMap.keys()]);
+  const out=[];
+  for(const enr of all){
+    const lw = lastMap.get(enr);
+    const tw = thisMap.get(enr);
+    const base = tw || lw;
+    const lastAtt = lw ? lw.attendance : null;
+    const thisAtt = tw ? tw.attendance : null;
+    let change = null;
+    if(lastAtt!==null && thisAtt!==null) change = +(thisAtt-lastAtt).toFixed(2);
+
+    let status = "Unchanged";
+    if(lastAtt===null) status = "New";
+    else if(thisAtt===null) status = "Missing";
+    else if(change > 0.5) status = "Improved";
+    else if(change < -0.5) status = "Declined";
+
+    out.push({
+      enrollment: enr,
+      name: base.name,
+      mentor: base.mentor,
+      semester: base.semester,
+      lastAtt, thisAtt, change, status,
+      lastCategory: lw ? lw.category : "",
+      thisCategory: tw ? tw.category : "",
+      lastRemark: lw ? lw.remark : "",
+      thisRemark: tw ? tw.remark : "",
+      lastHadRemark: lw ? lw.hasRemark : false,
+      thisHadRemark: tw ? tw.hasRemark : false
+    });
+  }
+  return out;
+}
+
+function buildMentorStats(){
+  const map = new Map();
+  comparison.forEach(c=>{
+    if(!map.has(c.mentor)){
+      map.set(c.mentor,{
+        mentor:c.mentor,
+        total:0, improved:0, declined:0, unchanged:0, newStudents:0, missing:0,
+        calledLast:0, calledThis:0, calledEither:0,
+        atRiskLast:0, atRiskThis:0,
+        sumChange:0, countBoth:0
+      });
+    }
+    const s = map.get(c.mentor);
+    s.total++;
+    if(c.status==="Improved") s.improved++;
+    else if(c.status==="Declined") s.declined++;
+    else if(c.status==="Unchanged") s.unchanged++;
+    else if(c.status==="New") s.newStudents++;
+    else if(c.status==="Missing") s.missing++;
+
+    if(c.lastHadRemark) s.calledLast++;
+    if(c.thisHadRemark) s.calledThis++;
+    if(c.lastHadRemark || c.thisHadRemark) s.calledEither++;
+
+    if(c.lastAtt!==null && c.lastAtt<40) s.atRiskLast++;
+    if(c.thisAtt!==null && c.thisAtt<40) s.atRiskThis++;
+
+    if(c.lastAtt!==null && c.thisAtt!==null){
+      s.sumChange += c.change;
+      s.countBoth++;
+    }
+  });
+
+  const arr=[];
+  map.forEach(s=>{
+    const followUpRate = s.total ? (s.calledEither/s.total*100) : 0;
+    const improvementRate = s.total ? (s.improved/s.total*100) : 0;
+    const recoveryRate = s.atRiskLast>0
+      ? Math.max(0, (s.atRiskLast - s.atRiskThis)/s.atRiskLast*100)
+      : 100;
+    const avgChange = s.countBoth ? +(s.sumChange/s.countBoth).toFixed(2) : 0;
+    // weighted score
+    const score = +(improvementRate*0.5 + followUpRate*0.3 + recoveryRate*0.2).toFixed(1);
+
+    arr.push({
+      ...s,
+      followUpRate:+followUpRate.toFixed(1),
+      improvementRate:+improvementRate.toFixed(1),
+      recoveryRate:+recoveryRate.toFixed(1),
+      avgChange,
+      score
+    });
+  });
+  arr.sort((a,b)=>b.score-a.score);
+  return arr;
+}
+
+function tryCompare(){
+  if(!lastRecords.length || !thisRecords.length){
+    return; // wait for both
+  }
+  comparison = buildComparison();
+  mentorStats = buildMentorStats();
+  document.getElementById("fuResults").style.display="block";
+  renderAll();
+}
+
+/* ==========================================================
+   RENDERERS
+   ========================================================== */
+function renderAll(){
+  renderCards();
+  renderStatusChart();
+  renderCatShift();
+  renderTopMentors();
+  renderMentorChart();
+  renderMentorTable();
+  renderStudentTable();
+  populateFilters();
+}
+
+function pct(n,d){ return d ? (n/d*100) : 0; }
+
+function renderCards(){
+  const total = comparison.length;
+  const improved = comparison.filter(c=>c.status==="Improved").length;
+  const declined = comparison.filter(c=>c.status==="Declined").length;
+  const unchanged = comparison.filter(c=>c.status==="Unchanged").length;
+  const newC = comparison.filter(c=>c.status==="New").length;
+  const missing = comparison.filter(c=>c.status==="Missing").length;
+
+  const both = comparison.filter(c=>c.lastAtt!==null && c.thisAtt!==null);
+  const avgDelta = both.length
+    ? (both.reduce((s,c)=>s+c.change,0)/both.length).toFixed(2) : "0.00";
+
+  const atRiskLast = comparison.filter(c=>c.lastAtt!==null && c.lastAtt<40).length;
+  const atRiskThis = comparison.filter(c=>c.thisAtt!==null && c.thisAtt<40).length;
+
+  const improvedPct = total ? (improved/total*100).toFixed(1) : "0.0";
+
+  document.getElementById("fuCards").innerHTML = `
+    <div class="fu-card"><div class="label">Total Students</div><div class="value">${total}</div></div>
+    <div class="fu-card green"><div class="label">▲ Improved</div><div class="value">${improved} <small>(${improvedPct}%)</small></div></div>
+    <div class="fu-card red"><div class="label">▼ Declined</div><div class="value">${declined}</div></div>
+    <div class="fu-card blue"><div class="label">= Unchanged</div><div class="value">${unchanged}</div></div>
+    <div class="fu-card purple"><div class="label">⭐ New / Missing</div><div class="value">${newC} / ${missing}</div></div>
+    <div class="fu-card yellow"><div class="label">Avg Attendance Δ</div><div class="value">${avgDelta>=0?'+':''}${avgDelta}%</div></div>
+    <div class="fu-card red"><div class="label">At-Risk: Last → This</div><div class="value">${atRiskLast} → ${atRiskThis}</div></div>
+  `;
+
+  const totalMentors = mentorStats.length;
+  const topMentor = mentorStats[0];
+  document.getElementById("fuInfoStrip").innerHTML =
+    `📌 Comparing <b>${lastRecords.length}</b> students (last week) vs <b>${thisRecords.length}</b> students (this week). ` +
+    `Tracking <b>${totalMentors}</b> mentors. ` +
+    (topMentor ? `🏆 Top performing mentor: <b>${topMentor.mentor}</b> (Score: ${topMentor.score})` : "");
+}
+
+function renderStatusChart(){
+  const groups = [
+    {key:"Improved",  color:"#28a745", label:"▲ Improved"},
+    {key:"Declined",  color:"#dc3545", label:"▼ Declined"},
+    {key:"Unchanged", color:"#4a90e2", label:"= Unchanged"},
+    {key:"New",       color:"#8e44ad", label:"⭐ New"},
+    {key:"Missing",   color:"#6c757d", label:"❓ Missing"}
+  ];
+  const total = comparison.length || 1;
+  const html = groups.map(g=>{
+    const n = comparison.filter(c=>c.status===g.key).length;
+    const p = n/total*100;
+    return `<div class="stat-row">
+      <div class="stat-label">${g.label}</div>
+      <div class="stat-bars">
+        <div class="stat-bar" style="width:${p}%;background:${g.color}">${n>0?n+" ("+p.toFixed(1)+"%)":""}</div>
+      </div>
+    </div>`;
+  }).join("");
+  document.getElementById("fuStatusChart").innerHTML = html || '<div class="no-data">No data</div>';
+}
+
+function renderCatShift(){
+  const cats = ["Above 75","60-75","40-60","Below 40"];
+  const colors = {"Above 75":"#28a745","60-75":"#4a90e2","40-60":"#f0ad4e","Below 40":"#dc3545"};
+  const lastCount = {}, thisCount = {};
+  cats.forEach(c=>{lastCount[c]=0; thisCount[c]=0;});
+  comparison.forEach(c=>{
+    if(c.lastCategory && lastCount[c.lastCategory]!==undefined) lastCount[c.lastCategory]++;
+    if(c.thisCategory && thisCount[c.thisCategory]!==undefined) thisCount[c.thisCategory]++;
+  });
+  const lastTotal = Object.values(lastCount).reduce((a,b)=>a+b,0) || 1;
+  const thisTotal = Object.values(thisCount).reduce((a,b)=>a+b,0) || 1;
+
+  let html = "";
+  cats.forEach(cat=>{
+    const lp = lastCount[cat]/lastTotal*100;
+    const tp = thisCount[cat]/thisTotal*100;
+    const delta = thisCount[cat] - lastCount[cat];
+    html += `<div class="stat-row">
+      <div class="stat-label" style="color:${colors[cat]}">${cat}</div>
+      <div style="flex:1">
+        <div style="font-size:11px;color:#8896a5;margin-bottom:3px">Last week: ${lastCount[cat]}</div>
+        <div class="stat-bars" style="height:18px">
+          <div class="stat-bar" style="width:${lp}%;background:${colors[cat]};opacity:.45"></div>
+        </div>
+        <div style="font-size:11px;color:#8896a5;margin:6px 0 3px">This week: ${thisCount[cat]}</div>
+        <div class="stat-bars" style="height:18px">
+          <div class="stat-bar" style="width:${tp}%;background:${colors[cat]}"></div>
+        </div>
+      </div>
+      <div style="width:110px;text-align:right;font-weight:700;font-size:13px;color:${delta>0?'#28a745':delta<0?'#dc3545':'#8896a5'}">
+        ${delta>0?'▲ +':delta<0?'▼ ':''}${delta}
+      </div>
+    </div>`;
+  });
+  document.getElementById("fuCatShift").innerHTML = html;
+}
+
+function renderTopMentors(){
+  const top = [...mentorStats].sort((a,b)=>b.avgChange - a.avgChange).slice(0,10);
+  if(!top.length){ document.getElementById("fuTopMentors").innerHTML='<div class="no-data">No data</div>'; return; }
+  const maxAbs = Math.max(...top.map(m=>Math.abs(m.avgChange)), 1);
+  document.getElementById("fuTopMentors").innerHTML = top.map(m=>{
+    const w = Math.abs(m.avgChange)/maxAbs*100;
+    const color = m.avgChange>=0 ? "#28a745" : "#dc3545";
+    return `<div class="bar-row">
+      <div class="name" title="${m.mentor}">${m.mentor}</div>
+      <div class="bar-track">
+        <div class="bar-seg" style="width:${w}%;background:${color}"></div>
+      </div>
+      <div class="fu-num" style="color:${color};font-weight:700">${m.avgChange>=0?'+':''}${m.avgChange}%</div>
+    </div>`;
+  }).join("");
+}
+
+function renderMentorChart(){
+  if(!mentorStats.length){ document.getElementById("fuMentorChart").innerHTML='<div class="no-data">No data</div>'; return; }
+  const maxTotal = Math.max(...mentorStats.map(m=>m.total),1);
+  document.getElementById("fuMentorChart").innerHTML = mentorStats.map(m=>{
+    const w = m.total/maxTotal*100;
+    const impP = m.improved/m.total*100;
+    const decP = m.declined/m.total*100;
+    const samP = m.unchanged/m.total*100;
+    const newP = (m.newStudents+m.missing)/m.total*100;
+    return `<div class="bar-row">
+      <div class="name" title="${m.mentor}">${m.mentor}</div>
+      <div class="bar-track">
+        <div class="bar-seg" style="width:${impP}%;background:#28a745" title="Improved: ${m.improved}"></div>
+        <div class="bar-seg" style="width:${decP}%;background:#dc3545" title="Declined: ${m.declined}"></div>
+        <div class="bar-seg" style="width:${samP}%;background:#4a90e2" title="Same: ${m.unchanged}"></div>
+        <div class="bar-seg" style="width:${newP}%;background:#8e44ad" title="New/Missing: ${m.newStudents+m.missing}"></div>
+      </div>
+      <div class="fu-num">${m.total} std · <b style="color:${m.score>=70?'#28a745':m.score>=50?'#4a90e2':m.score>=30?'#f0ad4e':'#dc3545'}">${m.score}</b></div>
+    </div>`;
+  }).join("");
+}
+
+function perfBadge(score){
+  if(score>=75) return `<span class="fu-pill p-excellent">Excellent</span>`;
+  if(score>=55) return `<span class="fu-pill p-good">Good</span>`;
+  if(score>=35) return `<span class="fu-pill p-average">Average</span>`;
+  return `<span class="fu-pill p-poor">Needs Attention</span>`;
+}
+
+let mentorSortKey = "score", mentorSortAsc = false;
+function renderMentorTable(){
+  const sorted = [...mentorStats].sort((a,b)=>{
+    let A=a[mentorSortKey], B=b[mentorSortKey];
+    if(typeof A==="string"){A=A.toLowerCase();B=String(B).toLowerCase();}
+    if(A<B) return mentorSortAsc?-1:1;
+    if(A>B) return mentorSortAsc?1:-1;
+    return 0;
+  });
+  document.getElementById("fuMentorTbody").innerHTML = sorted.map(m=>`
+    <tr>
+      <td><span class="mentor-tag">${m.mentor}</span></td>
+      <td><b>${m.total}</b></td>
+      <td>${m.calledEither}</td>
+      <td>${m.followUpRate}%</td>
+      <td><b style="color:#28a745">${m.improved}</b></td>
+      <td><b style="color:#dc3545">${m.declined}</b></td>
+      <td>${m.unchanged}</td>
+      <td>${m.atRiskLast}</td>
+      <td>${m.atRiskThis}</td>
+      <td class="${m.avgChange>0?'delta-pos':m.avgChange<0?'delta-neg':'delta-zero'}">${m.avgChange>=0?'+':''}${m.avgChange}%</td>
+      <td><b>${m.score}</b></td>
+      <td>${perfBadge(m.score)}</td>
+    </tr>`).join("") || `<tr><td colspan="12" class="no-data">No mentors to display</td></tr>`;
+  document.getElementById("fuMentorInfo").textContent = `Mentor Performance — ${mentorStats.length} mentors ranked by score`;
+}
+
+document.querySelectorAll("#tab-followup thead th[data-mk]").forEach(th=>{
+  th.addEventListener("click",()=>{
+    const k = th.dataset.mk;
+    if(mentorSortKey===k) mentorSortAsc=!mentorSortAsc; else {mentorSortKey=k; mentorSortAsc=false;}
+    renderMentorTable();
+  });
+});
+
+/* Student table */
+let studentSortKey = "mentor", studentSortAsc = true;
+function populateFilters(){
+  const mentorSel = document.getElementById("fuMentor");
+  const semSel = document.getElementById("fuSem");
+  const mentors = [...new Set(comparison.map(c=>c.mentor))].sort();
+  const sems = [...new Set(comparison.map(c=>c.semester))].sort();
+  mentorSel.innerHTML = '<option value="">All Mentors</option>' + mentors.map(m=>`<option>${m}</option>`).join("");
+  semSel.innerHTML = '<option value="">All Semesters</option>' + sems.map(s=>`<option>${s}</option>`).join("");
+}
+
+function studentRows(){
+  const m = document.getElementById("fuMentor").value;
+  const s = document.getElementById("fuSem").value;
+  const st = document.getElementById("fuStatus").value;
+  const q = document.getElementById("fuSearch").value.trim().toLowerCase();
+  return comparison.filter(c=>
+    (!m || c.mentor===m) &&
+    (!s || c.semester===s) &&
+    (!st || c.status===st) &&
+    (!q || c.name.toLowerCase().includes(q) || c.enrollment.toLowerCase().includes(q))
+  );
+}
+
+function renderStudentTable(){
+  const rows = studentRows().sort((a,b)=>{
+    let A=a[studentSortKey], B=b[studentSortKey];
+    if(A===null) return 1;
+    if(B===null) return -1;
+    if(typeof A==="number" && typeof B==="number") return studentSortAsc?A-B:B-A;
+    A=String(A).toLowerCase(); B=String(B).toLowerCase();
+    if(A<B) return studentSortAsc?-1:1;
+    if(A>B) return studentSortAsc?1:-1;
+    return 0;
+  });
+
+  const statusBadge = st => ({
+    "Improved":'<span class="fu-badge b-green">▲ Improved</span>',
+    "Declined":'<span class="fu-badge b-red">▼ Declined</span>',
+    "Unchanged":'<span class="fu-badge b-blue">= Same</span>',
+    "New":'<span class="fu-badge b-purple">⭐ New</span>',
+    "Missing":'<span class="fu-badge b-gray">❓ Missing</span>'
+  }[st] || st);
+
+  const catClass = c => ({
+    "Above 75":"b-green","60-75":"b-blue","40-60":"b-yellow","Below 40":"b-red"
+  }[c]||"b-gray");
+
+  document.getElementById("fuStudentTbody").innerHTML = rows.map(c=>{
+    const deltaCls = c.change===null ? "delta-zero" : (c.change>0 ? "delta-pos" : c.change<0 ? "delta-neg" : "delta-zero");
+    const deltaTxt = c.change===null ? "—" : (c.change>0?"+":"")+c.change+"%";
+    return `<tr>
+      <td><span class="sem-tag">${c.semester}</span></td>
+      <td>${c.enrollment}</td>
+      <td><b>${c.name}</b></td>
+      <td><span class="mentor-tag">${c.mentor}</span></td>
+      <td>${c.lastAtt!==null?c.lastAtt.toFixed(2)+"%":"—"}</td>
+      <td>${c.thisAtt!==null?c.thisAtt.toFixed(2)+"%":"—"}</td>
+      <td class="${deltaCls}">${deltaTxt}</td>
+      <td>${statusBadge(c.status)}</td>
+      <td>${c.lastCategory?`<span class="fu-badge ${catClass(c.lastCategory)}">${c.lastCategory}</span>`:"—"}</td>
+      <td>${c.thisCategory?`<span class="fu-badge ${catClass(c.thisCategory)}">${c.thisCategory}</span>`:"—"}</td>
+      <td class="remark-cell">${c.lastRemark||"—"}</td>
+      <td class="remark-cell">${c.thisRemark||"—"}</td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="12" class="no-data">No students match filters</td></tr>`;
+
+  document.getElementById("fuStudentInfo").textContent = `Showing ${rows.length} of ${comparison.length} students`;
+}
+
+["fuMentor","fuSem","fuStatus"].forEach(id=>document.getElementById(id).addEventListener("change",renderStudentTable));
+document.getElementById("fuSearch").addEventListener("input",renderStudentTable);
+
+document.querySelectorAll("#tab-followup thead th[data-sk]").forEach(th=>{
+  th.addEventListener("click",()=>{
+    const k = th.dataset.sk;
+    if(studentSortKey===k) studentSortAsc=!studentSortAsc; else {studentSortKey=k; studentSortAsc=true;}
+    renderStudentTable();
+  });
+});
+
+/* ==========================================================
+   CSV EXPORT
+   ========================================================== */
+function downloadCSV(filename, rows){
+  const csv = rows.map(r=>r.map(v=>{
+    const s = v===null||v===undefined ? "" : String(v);
+    return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+  }).join(",")).join("\n");
+  const blob = new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href=url; a.download=filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportMentorCSV(){
+  const rows = [["Mentor","Mentees","Followed Up","Coverage %","Improved","Declined","Unchanged",
+                 "New","Missing","At-Risk Last","At-Risk This","Avg Change","Improvement %",
+                 "Recovery %","Score"]];
+  mentorStats.forEach(m=>{
+    rows.push([m.mentor,m.total,m.calledEither,m.followUpRate,m.improved,m.declined,
+               m.unchanged,m.newStudents,m.missing,m.atRiskLast,m.atRiskThis,
+               m.avgChange,m.improvementRate,m.recoveryRate,m.score]);
+  });
+  downloadCSV("mentor_followup_performance.csv", rows);
+}
+
+function exportStudentCSV(){
+  const rows = [["Semester","Enrollment","Student","Mentor","Last %","This %","Change",
+                 "Status","Last Category","This Category","Last Remark","This Remark"]];
+  studentRows().forEach(c=>{
+    rows.push([c.semester,c.enrollment,c.name,c.mentor,
+               c.lastAtt===null?"":c.lastAtt,
+               c.thisAtt===null?"":c.thisAtt,
+               c.change===null?"":c.change,
+               c.status,c.lastCategory,c.thisCategory,
+               c.lastRemark,c.thisRemark]);
+  });
+  downloadCSV("student_comparison.csv", rows);
+}
+
+document.getElementById("fuBtnMentorCsv").addEventListener("click",exportMentorCSV);
+document.getElementById("fuBtnStudentCsv").addEventListener("click",exportStudentCSV);
+
+/* ==========================================================
+   INNER TABS (Overview / Mentor Performance / Student Comparison)
+   ========================================================== */
+document.querySelectorAll("#tab-followup .tab").forEach(t=>{
+  t.addEventListener("click",()=>{
+    document.querySelectorAll("#tab-followup .tab").forEach(x=>x.classList.remove("active"));
+    document.querySelectorAll("#tab-followup .tab-content").forEach(x=>x.classList.remove("active"));
+    t.classList.add("active");
+    document.getElementById("fu-tab-"+t.dataset.tab).classList.add("active");
+  });
+});
+
+/* small hook so the persistence script can save/restore this tab's data */
+window.__fu = {
+  get(){ return {lastRecords, thisRecords,
+    infoLast:document.getElementById("fuInfoLast").textContent,
+    infoThis:document.getElementById("fuInfoThis").textContent}; },
+  set(d){
+    lastRecords = d.lastRecords||[]; thisRecords = d.thisRecords||[];
+    document.getElementById("fuInfoLast").textContent = d.infoLast||"";
+    document.getElementById("fuInfoThis").textContent = d.infoThis||"";
+    if(lastRecords.length) document.getElementById("fuUploadLast").classList.add("loaded");
+    if(thisRecords.length) document.getElementById("fuUploadThis").classList.add("loaded-this");
+    tryCompare();
+  }
+};
+})();
+</script>
+<script>
+/* =======================================================================
+   AUTO-SAVE / RESTORE  v2 — Bulletproof session persistence.
+   Attendance records + Follow-up parsed records → IndexedDB (large data).
+   Tab position, filters, dates, basisMode      → localStorage.
+   Mentors & remarks already use their own localStorage keys (unchanged).
+   ======================================================================= */
+(function(){
+
+/* ---------- IndexedDB helpers ---------- */
+const DB_NAME = 'mentorDashDB_v2';
+const DB_STORE = 'kv';
+const UI_KEY   = 'mentorApp.ui.v2';
+
+function openDB(){
+  return new Promise(function(resolve, reject){
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = function(){ req.result.createObjectStore(DB_STORE); };
+    req.onsuccess = function(){ resolve(req.result); };
+    req.onerror   = function(){ reject(req.error); };
+  });
+}
+function idbPut(key, value){
+  return openDB().then(function(db){
+    return new Promise(function(resolve, reject){
+      const tx = db.transaction(DB_STORE, 'readwrite');
+      tx.objectStore(DB_STORE).put(value, key);
+      tx.oncomplete = resolve;
+      tx.onerror    = function(){ reject(tx.error); };
+    });
+  });
+}
+function idbGet(key){
+  return openDB().then(function(db){
+    return new Promise(function(resolve, reject){
+      const tx  = db.transaction(DB_STORE, 'readonly');
+      const req = tx.objectStore(DB_STORE).get(key);
+      req.onsuccess = function(){ resolve(req.result); };
+      req.onerror   = function(){ reject(req.error); };
+    });
+  });
+}
+function idbDel(key){
+  return openDB().then(function(db){
+    return new Promise(function(resolve, reject){
+      const tx = db.transaction(DB_STORE, 'readwrite');
+      tx.objectStore(DB_STORE).delete(key);
+      tx.oncomplete = resolve;
+      tx.onerror    = function(){ reject(tx.error); };
+    });
+  });
+}
+
+/* ---------- State ---------- */
+var SAVE_ENABLED = false;   // blocked until restore() finishes
+var _saveMainTimer, _saveUITimer, _saveFUTimer;
+
+/* ---------- Fast localStorage date backup (saves immediately on any date change) ---------- */
+var DATE_KEY = 'mentorApp.dates.v1';
+function saveDatesNow(){
+  if (!SAVE_ENABLED) return;
+  try {
+    localStorage.setItem(DATE_KEY, JSON.stringify({
+      thisDate  : STATE.thisDate,
+      lastDate  : STATE.lastDate,
+      basisMode : STATE.basisMode
+    }));
+  } catch(ex){}
+}
+
+/* ---------- Signature (cheap change-detection for attendance data) ---------- */
+function attendanceSig(){
+  var s = 0;
+  for (var i = 0; i < STATE.records.length; i++) s += STATE.records[i].percent;
+  return [STATE.fileName, STATE.records.length, s.toFixed(2),
+          STATE.thisDate, STATE.lastDate, STATE.basisMode,
+          STATE.sheetInfo.length].join('|');
+}
+var _lastSig = '';
+
+/* ---------- Save helpers ---------- */
+function saveAttendance(){
+  if (!SAVE_ENABLED) return;
+  var sig = attendanceSig();
+  if (sig === _lastSig) return;
+  _lastSig = sig;
+  var payload = {
+    records   : STATE.records,
+    sheetInfo : STATE.sheetInfo,
+    fileName  : STATE.fileName,
+    thisDate  : STATE.thisDate,
+    lastDate  : STATE.lastDate,
+    basisMode : STATE.basisMode
+  };
+  idbPut('attendance', payload).catch(function(e){ console.warn('[save] attendance:', e); });
+}
+
+function saveFollowUp(){
+  if (!SAVE_ENABLED) return;
+  if (!window.__fu) return;
+  var d = window.__fu.get();
+  if (!d.lastRecords.length && !d.thisRecords.length) return;
+  idbPut('followup', d).catch(function(e){ console.warn('[save] followup:', e); });
+}
+
+var FILTER_IDS = ['fSearch','fMentor','fCourse','fBatch','fStatus',
+                  'fMin','fMax','fOnlyAssigned','fOnlyUnassigned',
+                  'fOnlyRemark','fGroupMentor','pageSize'];
+var FU_FILTER_IDS = ['fuMentor','fuSem','fuStatus','fuSearch'];
+
+function saveUI(){
+  if (!SAVE_ENABLED) return;
+  var activeMain = document.querySelector('nav.tabs button.active');
+  var activeFU   = document.querySelector('#tab-followup .tab.active');
+  var ui = {
+    tab   : activeMain ? activeMain.dataset.tab : '',
+    fuTab : activeFU   ? activeFU.dataset.tab   : '',
+    f  : {},
+    fu : {}
+  };
+  FILTER_IDS.forEach(function(id){
+    var e = el(id);
+    if (!e) return;
+    ui.f[id] = (e.type === 'checkbox') ? e.checked : e.value;
+  });
+  FU_FILTER_IDS.forEach(function(id){
+    var e = el(id);
+    if (e) ui.fu[id] = e.value;
+  });
+  try { localStorage.setItem(UI_KEY, JSON.stringify(ui)); } catch(ex){}
+}
+
+/* ---------- Wrap refresh() so every re-render schedules an attendance save ---------- */
+(function(){
+  var _orig = window.refresh;
+  window.refresh = function(){
+    var ret = _orig.apply(this, arguments);
+    clearTimeout(_saveMainTimer);
+    _saveMainTimer = setTimeout(saveAttendance, 600);
+    return ret;
+  };
+})();
+
+/* ---------- Save UI state 400 ms after any interaction ---------- */
+document.addEventListener('input',  function(){ clearTimeout(_saveUITimer); _saveUITimer = setTimeout(saveUI, 400); });
+document.addEventListener('change', function(){ clearTimeout(_saveUITimer); _saveUITimer = setTimeout(saveUI, 400); });
+document.addEventListener('click',  function(){ clearTimeout(_saveUITimer); _saveUITimer = setTimeout(saveUI, 600); });
+
+/* ---------- Save dates IMMEDIATELY whenever date selectors or basisMode change ---------- */
+document.addEventListener('DOMContentLoaded', function(){
+  ['selThis','selLast','basisMode'].forEach(function(id){
+    var elem = el(id);
+    if (!elem) return;
+    elem.addEventListener('change', saveDatesNow);
+  });
+  /* Auto-detect button also changes dates — save 200ms after it fires (after autoPickDates runs) */
+  var autoBtn = el('autoDates');
+  if (autoBtn) autoBtn.addEventListener('click', function(){ setTimeout(saveDatesNow, 200); });
+});
+
+/* ---------- Watch Follow-up info spans to detect completed uploads ---------- */
+function watchFUUploads(){
+  var obs = new MutationObserver(function(){
+    clearTimeout(_saveFUTimer);
+    _saveFUTimer = setTimeout(saveFollowUp, 500);
+  });
+  ['fuInfoLast','fuInfoThis'].forEach(function(id){
+    var e = el(id);
+    if (e) obs.observe(e, {childList:true, characterData:true, subtree:true});
+  });
+}
+
+/* ---------- Restore helpers ---------- */
+function applyFormVals(obj){
+  Object.keys(obj || {}).forEach(function(id){
+    var e = el(id);
+    if (!e) return;
+    if (e.type === 'checkbox') e.checked = !!obj[id];
+    else e.value = obj[id];
+  });
+}
+
+/* ---------- Main restore routine (runs once on page load) ---------- */
+async function restore(){
+  var ui = {};
+  try { ui = JSON.parse(localStorage.getItem(UI_KEY) || '{}'); } catch(ex){}
+
+  try {
+    /* 1. Restore main tab position first */
+    if (ui.tab) { switchTab(ui.tab); }
+
+    /* 2. Restore follow-up inner tab */
+    if (ui.fuTab) {
+      var fuTabBtn = document.querySelector('#tab-followup .tab[data-tab="' + ui.fuTab + '"]');
+      if (fuTabBtn) fuTabBtn.click();
+    }
+
+    /* 3. Restore attendance data from IndexedDB */
+    var att = await idbGet('attendance');
+    if (att && att.records && att.records.length > 0) {
+      STATE.records   = att.records;
+      STATE.sheetInfo = att.sheetInfo  || [];
+      STATE.fileName  = att.fileName   || '';
+      STATE.basisMode = att.basisMode  || 'fixed';
+      STATE.thisDate  = att.thisDate   || null;
+      STATE.lastDate  = att.lastDate   || null;
+
+      /* Override dates from the fast localStorage backup (survives even a quick Ctrl+R
+         pressed before the 600ms IndexedDB write timer could fire) */
+      try {
+        var savedDates = JSON.parse(localStorage.getItem(DATE_KEY) || '{}');
+        if (savedDates.thisDate)  STATE.thisDate  = savedDates.thisDate;
+        if (savedDates.lastDate !== undefined) STATE.lastDate = savedDates.lastDate || null;
+        if (savedDates.basisMode) STATE.basisMode = savedDates.basisMode;
+      } catch(ex){}
+
+      /* Sync UI elements that wire() set before we existed */
+      el('basisMode').value = STATE.basisMode;
+      el('fixedDateRow').style.display = (STATE.basisMode === 'fixed') ? 'flex' : 'none';
+
+      /* Rebuild derived state */
+      rebuildStudents();
+
+      /* First refresh: populates filter dropdowns with real option values */
+      refresh();
+
+      /* Now apply saved filter values (options are now present in selects) */
+      applyFormVals(ui.f);
+
+      /* Second refresh: re-filters with the restored filter state */
+      refresh();
+
+      /* Lock the signature so the post-restore refresh doesn't trigger a redundant write */
+      _lastSig = attendanceSig();
+    }
+
+    /* 4. Restore Follow-up data */
+    var fuData = await idbGet('followup');
+    if (fuData && window.__fu &&
+        ((fuData.lastRecords && fuData.lastRecords.length) ||
+         (fuData.thisRecords && fuData.thisRecords.length))) {
+      window.__fu.set(fuData);
+      /* Restore follow-up filters and re-apply them */
+      applyFormVals(ui.fu);
+      FU_FILTER_IDS.forEach(function(id){
+        var e = el(id);
+        if (!e) return;
+        e.dispatchEvent(new Event(id === 'fuSearch' ? 'input' : 'change', {bubbles:true}));
+      });
+    }
+
+  } catch(err) {
+    console.warn('[restore] Error during session restore:', err);
+  }
+
+  /* 5. Unlock saving now that restore is complete */
+  SAVE_ENABLED = true;
+
+  /* 6. Request persistent storage so browser won't evict our IndexedDB data */
+  if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().catch(function(){});
+  }
+
+  /* 7. Start watching follow-up upload boxes */
+  watchFUUploads();
+}
+
+/* ---------- Hook into the clear-data button so it also wipes IndexedDB ---------- */
+document.addEventListener('DOMContentLoaded', function(){
+  var clearBtn = el('btnClearData');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', function(){
+      /* The main handler already confirmed & cleared STATE; we just wipe the saved copy too */
+      idbDel('attendance').catch(function(){});
+      _lastSig = '';
+    }, true /* capture: runs before the existing handler sees it */);
+  }
+});
+
+/* ---------- Boot ---------- */
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', restore);
+} else {
+  /* DOMContentLoaded already fired — wire() has run; call restore immediately */
+  restore();
+}
+
+})();
+</script>
+</body>
+</html>

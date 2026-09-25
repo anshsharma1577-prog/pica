@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>College Timetable Generator — UG & PG</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#0b1220; --panel:#141d2e; --panel2:#1c2740; --line:#2a3a56;
+  --txt:#e6edf7; --muted:#93a4c0; --acc:#38bdf8; --acc2:#22c55e;
+  --warn:#f59e0b; --bad:#ef4444; --purple:#a78bfa;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+     background:radial-gradient(1200px 600px at 10% -10%,#16233c 0%,var(--bg) 60%);
+     color:var(--txt);font-size:14px;min-height:100vh}
+h1,h2,h3{margin:0 0 10px 0;font-weight:600}
+h1{font-size:20px;letter-spacing:.3px}
+h2{font-size:16px;color:var(--acc)}
+h3{font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+a{color:var(--acc)}
+.wrap{max-width:1500px;margin:0 auto;padding:18px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;
+  background:linear-gradient(90deg,#132038,#0e1728);border:1px solid var(--line);
+  border-radius:14px;padding:16px 20px;margin-bottom:16px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:42px;height:42px;border-radius:11px;display:grid;place-items:center;
+  background:linear-gradient(135deg,#0ea5e9,#6366f1);font-size:22px}
+.sub{color:var(--muted);font-size:12px;margin-top:2px}
+.credit{font-size:12px;color:var(--muted);letter-spacing:.3px}
+.credit b{color:var(--acc)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.tab{padding:9px 16px;border-radius:10px;border:1px solid var(--line);background:var(--panel);
+  color:var(--muted);cursor:pointer;font-size:13px;font-weight:600;transition:.15s}
+.tab:hover{color:var(--txt);border-color:#3d5580}
+.tab.active{background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;border-color:transparent;
+  box-shadow:0 6px 18px -6px #0ea5e988}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+button{font-family:inherit;font-size:13px;font-weight:600;border-radius:10px;border:1px solid var(--line);
+  background:var(--panel2);color:var(--txt);padding:10px 16px;cursor:pointer;transition:.15s}
+button:hover{border-color:#4a6494;transform:translateY(-1px)}
+button.primary{background:linear-gradient(135deg,#0ea5e9,#6366f1);border-color:transparent;color:#fff}
+button.green{background:linear-gradient(135deg,#16a34a,#22c55e);border-color:transparent;color:#fff}
+button.ghost{background:transparent}
+button:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+select,input[type=text],input[type=number],input[type=file],textarea{font-family:inherit;font-size:13px;background:var(--panel2);
+  color:var(--txt);border:1px solid var(--line);border-radius:9px;padding:9px 11px;width:100%}
+textarea{resize:vertical;min-height:120px;font-family:'Consolas','Monaco',monospace;font-size:12.5px;line-height:1.5}
+select:focus,input:focus,textarea:focus{outline:none;border-color:var(--acc)}
+label{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;
+  margin-bottom:5px;font-weight:700}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:12px}
+.stat .v{font-size:22px;font-weight:700;color:var(--acc)}
+.stat .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-top:3px}
+.tbl-wrap{overflow:auto;border:1px solid var(--line);border-radius:11px;background:var(--panel2)}
+table{border-collapse:collapse;width:100%;font-size:12px;min-width:640px}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:center;vertical-align:middle}
+th{background:#182238;color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;
+   letter-spacing:.5px;position:sticky;top:0;z-index:2}
+td.daycell{background:#182238;font-weight:700;color:var(--acc);white-space:nowrap;position:sticky;left:0;z-index:1}
+td.free{color:#4b5f80;font-style:italic;background:#111a2b}
+td.busy{background:#132a3d}
+.cell-sub{font-weight:700;color:#e6edf7;font-size:11.5px;line-height:1.25}
+.cell-teach{color:var(--acc);font-size:10.5px;margin-top:2px}
+.cell-room{color:var(--warn);font-size:10px;margin-top:1px;font-weight:700}
+.labcell{background:#2a1f3d !important}
+.labcell .cell-sub{color:#c4b5fd}
+.dcard{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px;margin-bottom:14px}
+.dhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;flex-wrap:wrap;gap:8px}
+.dname{font-size:15px;font-weight:700}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:10px;font-weight:700;
+  background:#1e3a5f;color:#7dd3fc;margin-left:6px}
+.pill.pg{background:#3b1e5f;color:#c4b5fd}
+.pill.ug{background:#0e3a2f;color:#6ee7b7}
+.pill.cap{background:#3a1e1e;color:#fbbf24}
+.freebox{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:12px;
+  max-height:420px;overflow:auto}
+.chip{display:inline-block;padding:5px 11px;margin:3px;border-radius:8px;font-size:11.5px;font-weight:600}
+.chip.free{background:#0e3a2f;color:#6ee7b7;border:1px solid #14532d}
+.chip.busy{background:#3a1414;color:#fca5a5;border:1px solid #7f1d1d}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin:8px 0;font-size:12px;color:var(--muted)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:middle}
+.timing{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tslot{padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;border:1px solid var(--line);
+  background:var(--panel2);white-space:nowrap}
+.tslot.brk{background:#3a2a12;color:#fcd34d;border-color:#78350f}
+.tslot.lunch{background:#3a1a2a;color:#f9a8d4;border-color:#831843}
+.hint{font-size:12px;color:var(--muted);line-height:1.6}
+.warnbox{background:#3a2a12;border:1px solid #78350f;color:#fcd34d;padding:10px 12px;border-radius:10px;
+  font-size:12.5px;margin:10px 0}
+.okbox{background:#0e3a2f;border:1px solid #14532d;color:#6ee7b7;padding:10px 12px;border-radius:10px;
+  font-size:12.5px;margin:10px 0}
+.errbox{background:#3a1414;border:1px solid #7f1d1d;color:#fca5a5;padding:10px 12px;border-radius:10px;
+  font-size:12.5px;margin:10px 0}
+.sec{display:none}
+.sec.active{display:block}
+.small{font-size:11px;color:var(--muted)}
+.spinner{display:inline-block;width:15px;height:15px;border:2px solid #ffffff44;border-top-color:#fff;
+  border-radius:50%;animation:sp .7s linear infinite;vertical-align:-3px;margin-right:7px}
+@keyframes sp{to{transform:rotate(360deg)}}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:#0f1728}
+::-webkit-scrollbar-thumb{background:#2a3a56;border-radius:6px}
+::-webkit-scrollbar-thumb:hover{background:#3d5580}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="logo">🗓️</div>
+      <div>
+        <h1>College Timetable Generator</h1>
+        <div class="sub">
+          UG 09:30–16:20 &nbsp;•&nbsp; PG 07:30–14:10 &nbsp;•&nbsp;
+          Classroom cap <b style="color:var(--acc)">70</b> &nbsp;•&nbsp; Lab cap <b style="color:var(--acc)">35</b>
+          &nbsp;•&nbsp; Labs use <b style="color:var(--acc)">2 rooms + 2 faculty</b>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+      <div class="credit">Created by <b>Prof. Payal Parekh</b></div>
+      <div class="btnrow" style="margin:0">
+        <button class="ghost" onclick="loadDemo()">⚡ Load Demo Data</button>
+        <button class="ghost" onclick="downloadTemplate()">⬇ Template</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" data-sec="sec-setup">1 · Setup &amp; Upload</div>
+    <div class="tab" data-sec="sec-master">2 · Master Timetable</div>
+    <div class="tab" data-sec="sec-teacher">3 · Teacher Free Slots</div>
+    <div class="tab" data-sec="sec-rooms">4 · Room Utilization</div>
+  </div>
+
+  <div class="sec active" id="sec-setup">
+
+    <div class="panel" id="configPanel">
+      <h2>⚙️ Resource &amp; Faculty Configuration <span class="small" style="text-transform:none;color:var(--muted)">(change anytime — click Apply then regenerate)</span></h2>
+
+      <div class="grid3">
+        <div>
+          <label>Number of Classrooms</label>
+          <input type="number" id="cfgClassrooms" value="25" min="1" max="300" oninput="updateCfgPreview()"/>
+        </div>
+        <div>
+          <label>Classroom Prefix</label>
+          <input type="text" id="cfgCrPrefix" value="CR-" oninput="updateCfgPreview()"/>
+        </div>
+        <div>
+          <label>Classroom Suffix Digits</label>
+          <input type="number" id="cfgCrPad" value="2" min="1" max="4" oninput="updateCfgPreview()"/>
+        </div>
+
+        <div>
+          <label>Number of Labs</label>
+          <input type="number" id="cfgLabs" value="25" min="1" max="300" oninput="updateCfgPreview()"/>
+        </div>
+        <div>
+          <label>Lab Prefix</label>
+          <input type="text" id="cfgLabPrefix" value="LAB-" oninput="updateCfgPreview()"/>
+        </div>
+        <div>
+          <label>Lab Suffix Digits</label>
+          <input type="number" id="cfgLabPad" value="2" min="1" max="4" oninput="updateCfgPreview()"/>
+        </div>
+
+        <div>
+          <label>Classroom Capacity (students)</label>
+          <input type="number" id="cfgCrCap" value="70" min="1" oninput="updateCfgPreview()"/>
+        </div>
+        <div>
+          <label>Lab Capacity (students)</label>
+          <input type="number" id="cfgLabCap" value="35" min="1" oninput="updateCfgPreview()"/>
+        </div>
+        <div>
+          <label>Labs per Lab Session</label>
+          <input type="number" id="cfgLabsPerSess" value="2" min="1" max="4" oninput="updateCfgPreview()"/>
+        </div>
+        <div>
+          <label>Faculty per Lab Session</label>
+          <input type="number" id="cfgFacPerLab" value="2" min="1" max="4" oninput="updateCfgPreview()"/>
+        </div>
+      </div>
+
+      <div class="warnbox" style="margin-top:12px">
+        🔬 <b>Lab rule:</b> every lab session of a division reserves <b id="cfgNoteLabs">2 labs</b>
+        and <b id="cfgNoteFac">2 faculty</b> at the same time slot.
+        If your Excel <code>Teacher</code> cell lists two names separated by comma / semicolon
+        (e.g. <code>"Prof. A, Prof. B"</code>), both are used. Otherwise the second faculty is
+        auto-picked from the Faculty pool (least-loaded free teacher).
+      </div>
+
+      <div style="margin-top:14px">
+        <label>Faculty List <span style="text-transform:none;color:var(--muted)">(one name per line — teachers from Excel auto-merge)</span></label>
+        <textarea id="cfgFaculty" placeholder="Prof. Aarav Sharma&#10;Prof. Ananya Verma&#10;Prof. Rahul Patel&#10;…" oninput="updateCfgPreview()"></textarea>
+        <div class="small" id="facultyCount" style="margin-top:6px"></div>
+      </div>
+
+      <div class="btnrow">
+        <button class="primary" onclick="applyConfig()">✓ Apply Configuration</button>
+        <button onclick="mergeFacultyFromExcel()">⇄ Merge Excel Teachers into Faculty</button>
+        <button onclick="resetConfig()">↺ Reset Defaults</button>
+        <button onclick="exportConfig()">⬇ Export Config (JSON)</button>
+        <button onclick="document.getElementById('cfgImportFile').click()">⬆ Import Config (JSON)</button>
+        <input type="file" id="cfgImportFile" accept=".json" style="display:none"/>
+      </div>
+
+      <div class="grid4" style="margin-top:14px">
+        <div class="stat"><div class="v" id="statCrCount">—</div><div class="l">Classrooms</div></div>
+        <div class="stat"><div class="v" id="statLabCount">—</div><div class="l">Labs</div></div>
+        <div class="stat"><div class="v" id="statFacCount">—</div><div class="l">Faculty in list</div></div>
+        <div class="stat"><div class="v" id="statCap">—</div><div class="l">CR cap / Lab cap</div></div>
+      </div>
+      <div id="cfgMsg"></div>
+    </div>
+
+    <div class="panel">
+      <h2>⏱️ Fixed Timing Structure</h2>
+      <div class="grid2">
+        <div>
+          <h3>UG — 09:30 to 16:20 (7 periods × 45 min)</h3>
+          <div class="timing" id="ugTiming"></div>
+        </div>
+        <div>
+          <h3>PG — 07:30 to 14:10 (8 periods × 45 min)</h3>
+          <div class="timing" id="pgTiming"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>📥 Upload Subject–Teacher Allocation (Excel)</h2>
+      <p class="hint">
+        Upload an <b>.xlsx / .xls / .csv</b> file with these columns (header names are flexible):<br>
+        <code>Program</code> (UG/PG) · <code>Semester</code> · <code>Division</code> ·
+        <code>Subject Code</code> · <code>Subject Name</code> · <code>Teacher</code>
+        (use <code>"Prof. A, Prof. B"</code> for two lab faculty) ·
+        <code>Type</code> (Theory/Lab) · <code>Sessions/Week</code> · <code>Slots/Session</code> (labs = 2)
+      </p>
+      <div class="grid2" style="margin-top:10px">
+        <div>
+          <label>Excel file</label>
+          <input type="file" id="fileInput" accept=".xlsx,.xls,.csv"/>
+        </div>
+        <div>
+          <label>Actions</label>
+          <div class="btnrow" style="margin-top:0">
+            <button class="primary" id="genBtn" onclick="generate()">🚀 Generate Timetable</button>
+            <button onclick="loadDemo()">⚡ Demo Data</button>
+            <button onclick="downloadTemplate()">⬇ Download Template</button>
+          </div>
+        </div>
+      </div>
+      <div id="uploadMsg"></div>
+    </div>
+
+    <div class="panel">
+      <h2>📊 Data Summary</h2>
+      <div class="grid4" id="summaryStats"></div>
+    </div>
+
+    <div class="panel">
+      <h2>📋 Loaded Data Preview</h2>
+      <div class="tbl-wrap" id="previewWrap" style="max-height:340px">
+        <div class="hint" style="padding:14px">No data loaded yet. Upload an Excel file or click <b>Load Demo Data</b>.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="sec" id="sec-master">
+    <div class="panel">
+      <div class="dhead">
+        <h2 style="margin:0">📚 Master Timetable (Division-wise)</h2>
+        <div class="btnrow" style="margin:0">
+          <input type="text" id="divFilter" placeholder="Filter division…" style="width:180px" oninput="renderMaster()"/>
+          <button class="green" onclick="exportMaster()">⬇ Export Excel</button>
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="dot" style="background:#132a3d"></span>Theory</span>
+        <span><span class="dot" style="background:#2a1f3d"></span>Lab (2 rooms + 2 faculty)</span>
+        <span><span class="dot" style="background:#111a2b"></span>Free slot</span>
+      </div>
+      <div id="masterOut"></div>
+    </div>
+  </div>
+
+  <div class="sec" id="sec-teacher">
+    <div class="panel">
+      <h2>🔍 Who is free at a specific slot?</h2>
+      <div class="grid3">
+        <div>
+          <label>Program</label>
+          <select id="tfProg" onchange="fillTfSlots();renderFreeFinder()">
+            <option value="UG">UG (09:30–16:20)</option>
+            <option value="PG">PG (07:30–14:10)</option>
+          </select>
+        </div>
+        <div>
+          <label>Day</label>
+          <select id="tfDay" onchange="renderFreeFinder()"></select>
+        </div>
+        <div>
+          <label>Slot</label>
+          <select id="tfSlot" onchange="renderFreeFinder()"></select>
+        </div>
+      </div>
+      <div id="freeFinderOut" style="margin-top:14px"></div>
+    </div>
+
+    <div class="panel">
+      <div class="dhead">
+        <h2 style="margin:0">👤 Individual Teacher Weekly Grid</h2>
+        <div class="btnrow" style="margin:0">
+          <select id="tPick" style="width:260px" onchange="renderTeacherGrid()"></select>
+          <button class="green" onclick="exportTeacherFree()">⬇ Export Free-Slot Sheet</button>
+        </div>
+      </div>
+      <div id="teacherGridOut"></div>
+    </div>
+  </div>
+
+  <div class="sec" id="sec-rooms">
+    <div class="panel">
+      <h2>🏫 Room / Lab Utilization</h2>
+      <div class="grid4" id="roomStats"></div>
+      <div style="margin-top:14px" class="tbl-wrap" id="roomTable"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ==========================================================================
+   1. TIMING CONFIGURATION
+   ========================================================================== */
+const T0 = 7*60 + 30;
+const mm = (h,mi) => (h*60+mi) - T0;
+const NBIN = 106;
+const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const DAYS_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat'];
+
+const UG_PERIODS = [
+  {label:'09:30–10:15', start:mm(9,30),  end:mm(10,15)},
+  {label:'10:15–11:00', start:mm(10,15), end:mm(11,0)},
+  {label:'12:20–13:05', start:mm(12,20), end:mm(13,5)},
+  {label:'13:05–13:50', start:mm(13,5),  end:mm(13,50)},
+  {label:'14:05–14:50', start:mm(14,5),  end:mm(14,50)},
+  {label:'14:50–15:35', start:mm(14,50), end:mm(15,35)},
+  {label:'15:35–16:20', start:mm(15,35), end:mm(16,20)}
+];
+const UG_BREAKS = [
+  {label:'11:00–11:20', start:mm(11,0),  end:mm(11,20), kind:'Short Break'},
+  {label:'11:20–12:20', start:mm(11,20), end:mm(12,20), kind:'Lunch Break'},
+  {label:'13:50–14:05', start:mm(13,50), end:mm(14,5),  kind:'Short Break'}
+];
+const PG_PERIODS = [
+  {label:'07:30–08:15', start:mm(7,30),  end:mm(8,15)},
+  {label:'08:15–09:00', start:mm(8,15),  end:mm(9,0)},
+  {label:'09:25–10:10', start:mm(9,25),  end:mm(10,10)},
+  {label:'10:10–10:55', start:mm(10,10), end:mm(10,55)},
+  {label:'11:10–11:55', start:mm(11,10), end:mm(11,55)},
+  {label:'11:55–12:40', start:mm(11,55), end:mm(12,40)},
+  {label:'12:40–13:25', start:mm(12,40), end:mm(13,25)},
+  {label:'13:25–14:10', start:mm(13,25), end:mm(14,10)}
+];
+const PG_BREAKS = [
+  {label:'09:00–09:25', start:mm(9,0),   end:mm(9,25),  kind:'Break (after 2 lec.)'},
+  {label:'10:55–11:10', start:mm(10,55), end:mm(11,10), kind:'Short Break (15 min)'}
+];
+
+function binRange(s,e){ const a=[]; for(let b=Math.floor(s/5); b<Math.ceil(e/5); b++) a.push(b); return a; }
+const PINFO = {
+  UG: UG_PERIODS.map((p,i)=>({...p, idx:i, prog:'UG', bins:binRange(p.start,p.end)})),
+  PG: PG_PERIODS.map((p,i)=>({...p, idx:i, prog:'PG', bins:binRange(p.start,p.end)}))
+};
+
+/* ==========================================================================
+   2. DYNAMIC RESOURCES + CAPACITIES
+   ========================================================================== */
+let CLASSROOMS = [];
+let LABS       = [];
+let FACULTY    = [];
+let CLASSROOM_CAP = 70;
+let LAB_CAP       = 35;
+let LABS_PER_LAB  = 2;   // labs occupied per lab session
+let FAC_PER_LAB   = 2;   // faculty occupied per lab session
+
+function buildRoomNames(n, prefix, pad){
+  const out = [];
+  for(let i=1;i<=n;i++) out.push(prefix + String(i).padStart(pad,'0'));
+  return out;
+}
+
+function readConfigFromUI(){
+  const nCr   = Math.max(1, parseInt(document.getElementById('cfgClassrooms').value)||25);
+  const nLab  = Math.max(1, parseInt(document.getElementById('cfgLabs').value)||25);
+  const crP   = (document.getElementById('cfgCrPrefix').value || 'CR-').trim();
+  const labP  = (document.getElementById('cfgLabPrefix').value || 'LAB-').trim();
+  const crPad = Math.max(1, parseInt(document.getElementById('cfgCrPad').value)||2);
+  const labPad= Math.max(1, parseInt(document.getElementById('cfgLabPad').value)||2);
+  const crCap = Math.max(1, parseInt(document.getElementById('cfgCrCap').value)||70);
+  const labCap= Math.max(1, parseInt(document.getElementById('cfgLabCap').value)||35);
+  const labsPer = Math.max(1, parseInt(document.getElementById('cfgLabsPerSess').value)||2);
+  const facPer  = Math.max(1, parseInt(document.getElementById('cfgFacPerLab').value)||2);
+  const facTxt= document.getElementById('cfgFaculty').value || '';
+  const faculty = facTxt.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  return {nCr, nLab, crP, labP, crPad, labPad, crCap, labCap, labsPer, facPer, faculty};
+}
+
+function updateCfgPreview(){
+  const c = readConfigFromUI();
+  const crs = buildRoomNames(c.nCr,  c.crP,  c.crPad);
+  const lbs = buildRoomNames(c.nLab, c.labP, c.labPad);
+  document.getElementById('statCrCount').textContent  = c.nCr;
+  document.getElementById('statLabCount').textContent = c.nLab;
+  document.getElementById('statFacCount').textContent = c.faculty.length;
+  document.getElementById('statCap').textContent = c.crCap + ' / ' + c.labCap;
+  document.getElementById('cfgNoteLabs').textContent = c.labsPer + ' lab' + (c.labsPer>1?'s':'');
+  document.getElementById('cfgNoteFac').textContent  = c.facPer  + ' faculty';
+  document.getElementById('facultyCount').innerHTML =
+    `<b>${c.faculty.length}</b> faculty entered · preview: ${c.faculty.slice(0,3).map(x=>`<span style="color:var(--acc)">${x}</span>`).join(', ')}${c.faculty.length>3?' …':''}`
+    + `<br>Classrooms: <b>${crs[0]||'-'}</b> … <b>${crs[crs.length-1]||'-'}</b> &nbsp;|&nbsp; Labs: <b>${lbs[0]||'-'}</b> … <b>${lbs[lbs.length-1]||'-'}</b>`;
+}
+
+function applyConfig(){
+  const c = readConfigFromUI();
+  CLASSROOMS = buildRoomNames(c.nCr,  c.crP,  c.crPad);
+  LABS       = buildRoomNames(c.nLab, c.labP, c.labPad);
+  FACULTY    = c.faculty;
+  CLASSROOM_CAP = c.crCap;
+  LAB_CAP       = c.labCap;
+  LABS_PER_LAB  = c.labsPer;
+  FAC_PER_LAB   = c.facPer;
+  updateCfgPreview();
+
+  let warn = RESULT ? '<br>⚠️ Resources changed — please click <b>🚀 Generate Timetable</b> again.' : '';
+  document.getElementById('cfgMsg').innerHTML =
+    `<div class="okbox">✓ Applied — <b>${CLASSROOMS.length}</b> classrooms (cap ${CLASSROOM_CAP}), <b>${LABS.length}</b> labs (cap ${LAB_CAP}).
+     Labs use <b>${LABS_PER_LAB}</b> lab(s) + <b>${FAC_PER_LAB}</b> faculty each.${warn}</div>`;
+
+  if(RESULT){ initTeacherPickers(); renderRoomStats(); renderSummary(); }
+}
+
+function resetConfig(){
+  document.getElementById('cfgClassrooms').value = 25;
+  document.getElementById('cfgLabs').value = 25;
+  document.getElementById('cfgCrPrefix').value = 'CR-';
+  document.getElementById('cfgLabPrefix').value = 'LAB-';
+  document.getElementById('cfgCrPad').value = 2;
+  document.getElementById('cfgLabPad').value = 2;
+  document.getElementById('cfgCrCap').value = 70;
+  document.getElementById('cfgLabCap').value = 35;
+  document.getElementById('cfgLabsPerSess').value = 2;
+  document.getElementById('cfgFacPerLab').value = 2;
+  document.getElementById('cfgFaculty').value = '';
+  applyConfig();
+}
+
+function mergeFacultyFromExcel(){
+  if(!RAW_ROWS.length){ alert('Load an Excel file first.'); return; }
+  const existing = new Set(FACULTY.map(s=>s.toLowerCase()));
+  const merged = FACULTY.slice();
+  RAW_ROWS.forEach(r=>{
+    const list = [r.teacher].concat(r.coTeachers||[]);
+    list.forEach(t=>{
+      if(t && !existing.has(t.toLowerCase())){ existing.add(t.toLowerCase()); merged.push(t); }
+    });
+  });
+  document.getElementById('cfgFaculty').value = merged.join('\n');
+  applyConfig();
+}
+
+function exportConfig(){
+  const c = readConfigFromUI();
+  const data = {
+    classrooms: c.nCr, classroomPrefix: c.crP, classroomPad: c.crPad, classroomCapacity: c.crCap,
+    labs: c.nLab, labPrefix: c.labP, labPad: c.labPad, labCapacity: c.labCap,
+    labsPerSession: c.labsPer, facultyPerLab: c.facPer,
+    faculty: c.faculty
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'timetable_config.json'; a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importConfigFile(file){
+  const fr = new FileReader();
+  fr.onload = e=>{
+    try{
+      const d = JSON.parse(e.target.result);
+      if(d.classrooms!=null) document.getElementById('cfgClassrooms').value = d.classrooms;
+      if(d.classroomPrefix!=null) document.getElementById('cfgCrPrefix').value = d.classroomPrefix;
+      if(d.classroomPad!=null) document.getElementById('cfgCrPad').value = d.classroomPad;
+      if(d.classroomCapacity!=null) document.getElementById('cfgCrCap').value = d.classroomCapacity;
+      if(d.labs!=null) document.getElementById('cfgLabs').value = d.labs;
+      if(d.labPrefix!=null) document.getElementById('cfgLabPrefix').value = d.labPrefix;
+      if(d.labPad!=null) document.getElementById('cfgLabPad').value = d.labPad;
+      if(d.labCapacity!=null) document.getElementById('cfgLabCap').value = d.labCapacity;
+      if(d.labsPerSession!=null) document.getElementById('cfgLabsPerSess').value = d.labsPerSession;
+      if(d.facultyPerLab!=null) document.getElementById('cfgFacPerLab').value = d.facultyPerLab;
+      if(Array.isArray(d.faculty)) document.getElementById('cfgFaculty').value = d.faculty.join('\n');
+      applyConfig();
+      document.getElementById('cfgMsg').innerHTML = '<div class="okbox">✓ Configuration imported.</div>';
+    }catch(err){
+      document.getElementById('cfgMsg').innerHTML = '<div class="errbox">❌ Invalid JSON: '+err.message+'</div>';
+    }
+  };
+  fr.readAsText(file);
+}
+
+/* ==========================================================================
+   3. GLOBAL STATE
+   ========================================================================== */
+let RAW_ROWS = [];
+let RESULT   = null;
+
+/* ==========================================================================
+   4. UI HELPERS
+   ========================================================================== */
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick = ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.sec').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById(t.dataset.sec).classList.add('active');
+  };
+});
+function renderTimingStrips(){
+  const mk = (periods, breaks, sel) => {
+    let all = [...periods.map(p=>({...p,type:'p'})), ...breaks.map(b=>({...b,type:'b'}))]
+              .sort((a,b)=>a.start-b.start);
+    document.getElementById(sel).innerHTML = all.map(x=>{
+      const cls = x.type==='p' ? '' : (x.kind.includes('Lunch')?'lunch':'brk');
+      return `<span class="tslot ${cls}">${x.label}${x.type==='b'?' · '+x.kind:''}</span>`;
+    }).join('');
+  };
+  mk(UG_PERIODS, UG_BREAKS, 'ugTiming');
+  mk(PG_PERIODS, PG_BREAKS, 'pgTiming');
+}
+function msg(html, type){
+  document.getElementById('uploadMsg').innerHTML = html ? `<div class="${type||'okbox'}">${html}</div>` : '';
+}
+
+/* ==========================================================================
+   5. EXCEL PARSING  (multi-teacher support)
+   ========================================================================== */
+const HEADER_ALIASES = {};
+function alias(key, ...names){ names.forEach(n=>HEADER_ALIASES[n]=key); }
+alias('program','program','course','stream','level');
+alias('sem','semester','sem','year');
+alias('division','division','div','class','classname','section','batch');
+alias('code','subjectcode','code','coursecode','subjectid','papercode');
+alias('name','subjectname','subject','subjecttitle','coursename','paper','subject_name');
+alias('teacher','teacher','faculty','teachername','facultyname','instructor','professor','teachers','faculties');
+alias('type','type','sessiontype','classstype','classtype','mode');
+alias('sessions','sessionsperweek','sessions','lecturesperweek','hoursperweek','count','perweek','noofsessions','weeklyload');
+alias('len','slotspersession','duration','periodspersession','slotpercount','slots');
+
+function normHeader(h){ return String(h||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+
+// Split "Prof. A, Prof. B" / "Prof. A; Prof. B" / "Prof. A & Prof. B" / "Prof. A / Prof. B" / "Prof. A and Prof. B"
+function splitTeachers(str){
+  return String(str||'')
+    .split(/\s*(?:,|;|\/|&|\band\b)\s*/i)
+    .map(s=>s.trim())
+    .filter(Boolean);
+}
+
+function parseWorkbook(file){
+  const reader = new FileReader();
+  reader.onload = e=>{
+    try{
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+      let rows = [];
+      for(const sn of wb.SheetNames){
+        const ws = wb.Sheets[sn];
+        const json = XLSX.utils.sheet_to_json(ws, {defval:'', raw:true});
+        if(!json.length) continue;
+        const mapped = json.map(r=>{
+          const o = {};
+          for(const k in r){
+            const key = HEADER_ALIASES[normHeader(k)];
+            if(key && (o[key]===undefined || o[key]==='')) o[key] = r[k];
+          }
+          return o;
+        }).filter(o=> (o.division!==undefined && o.division!=='') );
+        if(mapped.length) rows = rows.concat(mapped);
+      }
+      if(!rows.length){ msg('❌ No valid rows found.','errbox'); return; }
+      loadRows(rows);
+    }catch(err){ msg('❌ Could not read file: '+err.message,'errbox'); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function loadRows(rows){
+  RAW_ROWS = rows.map(r=>{
+    let prog = String(r.program||'UG').trim().toUpperCase();
+    if(prog.startsWith('P')) prog='PG'; else prog='UG';
+    const type = /lab|pract|tut/i.test(String(r.type||'')) ? 'Lab' : 'Theory';
+    let len = parseInt(r.len);
+    if(isNaN(len) || len<1) len = (type==='Lab' ? 2 : 1);
+    let sessions = parseInt(r.sessions);
+    if(isNaN(sessions) || sessions<1) sessions = 1;
+
+    const tList = splitTeachers(r.teacher);
+    const primary = tList[0] || 'TBA';
+    const co      = tList.slice(1);
+
+    return {
+      program: prog,
+      sem: String(r.sem||'').trim(),
+      division: String(r.division||'').trim(),
+      code: String(r.code||r.name||'SUB').trim(),
+      name: String(r.name||r.code||'Subject').trim(),
+      teacher: primary,
+      coTeachers: co,
+      type, len, sessions
+    };
+  }).filter(r=>r.division);
+
+  // Auto-merge any new teachers into the faculty pool
+  const set = new Set(FACULTY.map(s=>s.toLowerCase()));
+  let added = 0;
+  RAW_ROWS.forEach(r=>{
+    [r.teacher].concat(r.coTeachers||[]).forEach(t=>{
+      if(t && !set.has(t.toLowerCase())){ set.add(t.toLowerCase()); FACULTY.push(t); added++; }
+    });
+  });
+  if(added){
+    document.getElementById('cfgFaculty').value = FACULTY.join('\n');
+    updateCfgPreview();
+  }
+
+  renderPreview(); renderSummary();
+  msg('✅ Loaded <b>'+RAW_ROWS.length+'</b> subject rows.'+(added?` Added <b>${added}</b> new teacher(s) to faculty.`:'')+' Click <b>Generate Timetable</b>.','okbox');
+}
+
+function renderPreview(){
+  const wrap = document.getElementById('previewWrap');
+  if(!RAW_ROWS.length){ wrap.innerHTML='<div class="hint" style="padding:14px">No data.</div>'; return; }
+  const head = ['Program','Sem','Division','Code','Subject','Teacher(s)','Type','Sess/wk','Slots/Sess'];
+  let html = '<table><thead><tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr></thead><tbody>';
+  RAW_ROWS.slice(0,300).forEach(r=>{
+    const tList = [r.teacher].concat(r.coTeachers||[]).join(' + ');
+    html += `<tr><td>${r.program}</td><td>${r.sem}</td><td>${r.division}</td><td>${r.code}</td>
+      <td style="text-align:left">${r.name}</td><td>${tList}</td>
+      <td>${r.type}</td><td>${r.sessions}</td><td>${r.len}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  if(RAW_ROWS.length>300) html += `<div class="hint" style="padding:8px">Showing first 300 of ${RAW_ROWS.length} rows…</div>`;
+  wrap.innerHTML = html;
+}
+
+function renderSummary(){
+  const s = document.getElementById('summaryStats');
+  const divs = new Set(RAW_ROWS.map(r=>r.division));
+  const teachers = new Set();
+  RAW_ROWS.forEach(r=>{ teachers.add(r.teacher); (r.coTeachers||[]).forEach(t=>teachers.add(t)); });
+  const totalSlots = RAW_ROWS.reduce((a,r)=>a + r.sessions*r.len, 0);
+  const labs = RAW_ROWS.filter(r=>r.type==='Lab').length;
+  const cards = [
+    ['Divisions', divs.size],
+    ['Teachers in Excel', teachers.size],
+    ['Faculty Configured', FACULTY.length],
+    ['Classrooms / Labs', CLASSROOMS.length+' / '+LABS.length],
+    ['Capacities (CR / Lab)', CLASSROOM_CAP+' / '+LAB_CAP],
+    ['Labs × Rooms × Fac', (LABS_PER_LAB+'r × '+FAC_PER_LAB+'f')]
+  ];
+  s.innerHTML = cards.map(c=>`<div class="stat"><div class="v">${c[1]}</div><div class="l">${c[0]}</div></div>`).join('');
+}
+
+/* ==========================================================================
+   6. SCHEDULER  (labs reserve 2 rooms + 2 faculty)
+   ========================================================================== */
+function createState(){
+  return {
+    teacherBusy: new Map(), roomBusy: new Map(), divBusy: new Map(),
+    subjDays: new Map(), divDayCount: new Map(), teacherDayCount: new Map(),
+    teacherLoad: new Map(),   // weekly accumulated load, for co-teacher balancing
+    roomUse: new Map(), assignments: []
+  };
+}
+function getDayArrs(map, key){
+  let a = map.get(key);
+  if(!a){ a = Array.from({length:6},()=>new Uint8Array(NBIN)); map.set(key,a); }
+  return a;
+}
+function dayCounter(map, key){
+  let c = map.get(key);
+  if(!c){ c = new Int16Array(6); map.set(key,c); }
+  return c;
+}
+function buildUnits(rows){
+  const units = []; let id = 0;
+  rows.forEach(r=>{
+    for(let i=0;i<r.sessions;i++){
+      units.push({
+        id: id++, program:r.program, sem:r.sem, division:r.division,
+        code:r.code, name:r.name, teacher:r.teacher, coTeachers:(r.coTeachers||[]).slice(),
+        type:r.type, len:r.len
+      });
+    }
+  });
+  return units;
+}
+function slotsFor(prog, startIdx, len){
+  const P = PINFO[prog];
+  if(startIdx + len > P.length) return null;
+  const arr = [];
+  for(let k=0;k<len;k++){
+    if(k>0 && (P[startIdx+k].start - P[startIdx+k-1].end) > 10) return null;
+    arr.push(P[startIdx+k]);
+  }
+  return arr;
+}
+function freeIn(arrDay, bins){
+  for(let i=0;i<bins.length;i++) if(arrDay[bins[i]]) return false;
+  return true;
+}
+
+// Pick co-teacher(s) for a lab — prefer listed coTeachers, else least-loaded free faculty
+function pickCoTeachers(st, unit, day, bins, need){
+  const picks = [];
+  const used = new Set([unit.teacher]);
+
+  // 1) From the explicitly listed co-teachers
+  for(const t of unit.coTeachers){
+    if(picks.length >= need) break;
+    if(used.has(t)) continue;
+    if(freeIn(getDayArrs(st.teacherBusy, t)[day], bins)){
+      picks.push(t); used.add(t);
+    }
+  }
+  // 2) Auto-fill from faculty pool (least weekly load)
+  if(picks.length < need){
+    const candidates = FACULTY
+      .filter(t=>!used.has(t))
+      .filter(t=>freeIn(getDayArrs(st.teacherBusy, t)[day], bins))
+      .sort((a,b)=>(st.teacherLoad.get(a)||0) - (st.teacherLoad.get(b)||0));
+    for(const t of candidates){
+      if(picks.length >= need) break;
+      picks.push(t); used.add(t);
+    }
+  }
+  return picks.length === need ? picks : null;
+}
+
+function canPlace(st, unit, day, startIdx){
+  const slots = slotsFor(unit.program, startIdx, unit.len);
+  if(!slots) return null;
+  const bins = [];
+  for(const s of slots) for(const b of s.bins) bins.push(b);
+
+  if(!freeIn(getDayArrs(st.divBusy, unit.division)[day], bins)) return null;
+  if(!freeIn(getDayArrs(st.teacherBusy, unit.teacher)[day], bins)) return null;
+
+  const isLab = unit.type === 'Lab';
+  const roomsNeeded = isLab ? LABS_PER_LAB : 1;
+  const pool = isLab ? LABS : CLASSROOMS;
+
+  const freeRooms = [];
+  for(const r of pool){
+    if(freeIn(getDayArrs(st.roomBusy, r)[day], bins)) freeRooms.push(r);
+  }
+  if(freeRooms.length < roomsNeeded) return null;
+
+  let coTeachers = [];
+  if(isLab){
+    const need = Math.max(0, FAC_PER_LAB - 1);  // primary teacher already checked
+    if(need > 0){
+      const picks = pickCoTeachers(st, unit, day, bins, need);
+      if(!picks) return null;
+      coTeachers = picks;
+    }
+  }
+
+  return {slots, bins, freeRooms, roomsNeeded, coTeachers};
+}
+
+function scorePlacement(st, unit, day, startIdx){
+  let s = 0;
+  const sk = unit.division+'|'+unit.code;
+  const sd = st.subjDays.get(sk);
+  if(sd && sd.has(day)) s += 1200;
+  s += dayCounter(st.divDayCount, unit.division)[day] * 7;
+  s += dayCounter(st.teacherDayCount, unit.teacher)[day] * 4;
+  const tsk = unit.teacher+'|'+unit.division+'|'+unit.code;
+  const tsd = st.subjDays.get(tsk);
+  if(tsd && tsd.has(day)) s += 500;
+  s += startIdx * 1.2 + Math.random()*12;
+  return s;
+}
+
+// Pick N least-used rooms
+function pickRooms(st, freeRooms, count){
+  return freeRooms.slice()
+    .sort((a,b)=>(st.roomUse.get(a)||0) - (st.roomUse.get(b)||0))
+    .slice(0, count);
+}
+
+function commit(st, unit, day, startIdx, chk){
+  const rooms = pickRooms(st, chk.freeRooms, chk.roomsNeeded);
+  const dArr = getDayArrs(st.divBusy, unit.division)[day];
+  const tArr = getDayArrs(st.teacherBusy, unit.teacher)[day];
+  for(const b of chk.bins){ dArr[b]=1; tArr[b]=1; }
+
+  // Mark each co-teacher busy too
+  for(const t of (chk.coTeachers||[])){
+    const arr = getDayArrs(st.teacherBusy, t)[day];
+    for(const b of chk.bins) arr[b]=1;
+  }
+  // Mark each room busy & bump room usage
+  for(const r of rooms){
+    const arr = getDayArrs(st.roomBusy, r)[day];
+    for(const b of chk.bins) arr[b]=1;
+    st.roomUse.set(r, (st.roomUse.get(r)||0) + unit.len);
+  }
+
+  // Load counters
+  dayCounter(st.divDayCount, unit.division)[day]++;
+  dayCounter(st.teacherDayCount, unit.teacher)[day]++;
+  st.teacherLoad.set(unit.teacher, (st.teacherLoad.get(unit.teacher)||0) + unit.len);
+  (chk.coTeachers||[]).forEach(t=>{
+    dayCounter(st.teacherDayCount, t)[day]++;
+    st.teacherLoad.set(t, (st.teacherLoad.get(t)||0) + unit.len);
+  });
+
+  const sk = unit.division+'|'+unit.code;
+  let sd = st.subjDays.get(sk); if(!sd){ sd=new Set(); st.subjDays.set(sk,sd); } sd.add(day);
+  const tsk = unit.teacher+'|'+unit.division+'|'+unit.code;
+  let tsd = st.subjDays.get(tsk); if(!tsd){ tsd=new Set(); st.subjDays.set(tsk,tsd); } tsd.add(day);
+
+  st.assignments.push({
+    id: unit.id, program: unit.program, sem: unit.sem, division: unit.division,
+    code: unit.code, name: unit.name, teacher: unit.teacher,
+    coTeachers: (chk.coTeachers||[]).slice(),
+    type: unit.type, len: unit.len, day, startIdx,
+    rooms: rooms.slice(),
+    room: rooms[0],
+    slotLabels: chk.slots.map(x=>x.label)
+  });
+}
+
+function attemptSchedule(units){
+  const st = createState();
+  const order = units.slice();
+  for(let i=order.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [order[i],order[j]]=[order[j],order[i]]; }
+  order.sort((a,b)=>{
+    const al = a.len>1?1:0, bl = b.len>1?1:0;
+    if(al!==bl) return bl-al;
+    return (b.priority||0)-(a.priority||0);
+  });
+
+  const unplaced = [];
+  for(const unit of order){
+    const P = PINFO[unit.program];
+    const cands = [];
+    for(let d=0; d<DAYS.length; d++){
+      for(let i=0;i<P.length;i++){
+        const chk = canPlace(st, unit, d, i);
+        if(!chk) continue;
+        cands.push({d, i, chk, score: scorePlacement(st, unit, d, i)});
+      }
+    }
+    if(!cands.length){ unplaced.push(unit); continue; }
+    cands.sort((a,b)=>a.score-b.score);
+    const top = Math.min(3, cands.length);
+    const pick = cands[Math.floor(Math.random()*top)];
+    commit(st, unit, pick.d, pick.i, pick.chk);
+  }
+  return { state: st, unplaced };
+}
+
+function generate(){
+  if(!RAW_ROWS.length){ msg('⚠️ Please upload an Excel file or load the demo data first.','warnbox'); return; }
+  if(!CLASSROOMS.length || !LABS.length){ msg('⚠️ No classrooms/labs configured.','warnbox'); return; }
+
+  const btn = document.getElementById('genBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Generating…';
+
+  setTimeout(()=>{
+    const units = buildUnits(RAW_ROWS);
+
+    const tLoad = new Map(), dLoad = new Map();
+    units.forEach(u=>{
+      tLoad.set(u.teacher, (tLoad.get(u.teacher)||0) + u.len);
+      dLoad.set(u.division, (dLoad.get(u.division)||0) + u.len);
+    });
+    units.forEach(u=>{ u.priority = (tLoad.get(u.teacher)||0)*2 + (dLoad.get(u.division)||0); });
+
+    const t0 = performance.now();
+    let best = null;
+    for(let a=0; a<120; a++){
+      const r = attemptSchedule(units);
+      if(!best || r.unplaced.length < best.unplaced.length) best = r;
+      if(best.unplaced.length === 0) break;
+      if(performance.now() - t0 > 9000) break;
+    }
+
+    RESULT = { state: best.state, assignments: best.state.assignments, unplaced: best.unplaced, units };
+
+    btn.disabled = false;
+    btn.innerHTML = '🚀 Generate Timetable';
+
+    if(best.unplaced.length){
+      msg(`⚠️ Generated with <b>${best.unplaced.length}</b> unscheduled session(s). Add more labs/faculty or spread sessions.`,'warnbox');
+    } else {
+      msg(`✅ All <b>${units.length}</b> sessions placed with 0 conflicts. Every lab reserved ${LABS_PER_LAB} labs + ${FAC_PER_LAB} faculty.`,'okbox');
+    }
+
+    initTeacherPickers();
+    renderMaster();
+    renderFreeFinder();
+    renderRoomStats();
+    renderSummary();
+    document.querySelector('[data-sec="sec-master"]').click();
+  }, 40);
+}
+
+/* ==========================================================================
+   7. MASTER TIMETABLE RENDERING
+   ========================================================================== */
+function divisionsList(){
+  const m = new Map();
+  RESULT.assignments.forEach(a=>{ if(!m.has(a.division)) m.set(a.division, a.program); });
+  return [...m.entries()].sort((a,b)=>{
+    if(a[1]!==b[1]) return a[1]==='UG'?-1:1;
+    return a[0].localeCompare(b[0], undefined, {numeric:true});
+  });
+}
+function renderMaster(){
+  const out = document.getElementById('masterOut');
+  if(!RESULT){ out.innerHTML = '<div class="hint" style="padding:14px">Generate the timetable first.</div>'; return; }
+  const filter = (document.getElementById('divFilter').value||'').toLowerCase();
+  let html = '';
+  for(const [div, prog] of divisionsList()){
+    if(filter && !div.toLowerCase().includes(filter)) continue;
+    html += divisionCard(div, prog);
+  }
+  if(!html) html = '<div class="hint" style="padding:14px">No division matches the filter.</div>';
+  out.innerHTML = html;
+}
+function divisionCard(div, prog){
+  const P = PINFO[prog];
+  const asg = RESULT.assignments.filter(a=>a.division===div);
+  const map = {};
+  asg.forEach(a=>{ for(let k=0;k<a.len;k++) map[a.day+'|'+(a.startIdx+k)] = (k===0)?a:{covered:true}; });
+  const totalPlaced = asg.reduce((s,a)=>s+a.len,0);
+  const capacity = P.length*6;
+
+  let t = `<div class="dcard">
+    <div class="dhead">
+      <div><span class="dname">Division ${div}</span>
+        <span class="pill ${prog.toLowerCase()}">${prog}</span>
+        <span class="pill">Sem ${asg[0]?asg[0].sem:'-'}</span>
+        <span class="pill cap">CR ${CLASSROOM_CAP} / Lab ${LAB_CAP}</span></div>
+      <div class="small">${totalPlaced} / ${capacity} slots filled &nbsp;·&nbsp; ${Math.round(totalPlaced/capacity*100)}%</div>
+    </div>
+    <div class="tbl-wrap"><table>
+    <thead><tr><th style="min-width:80px">Day</th>${P.map((p,i)=>`<th>P${i+1}<br><span style="font-weight:400;text-transform:none">${p.label}</span></th>`).join('')}</tr></thead><tbody>`;
+
+  for(let d=0; d<6; d++){
+    t += `<tr><td class="daycell">${DAYS_SHORT[d]}</td>`;
+    for(let i=0;i<P.length;i++){
+      const cell = map[d+'|'+i];
+      if(cell && cell.covered) continue;
+      if(!cell) t += `<td class="free">—</td>`;
+      else{
+        const cls = cell.type==='Lab' ? 'labcell' : 'busy';
+        const rooms = (cell.rooms||[cell.room]).join(' + ');
+        const teachers = [cell.teacher].concat(cell.coTeachers||[]).join(' + ');
+        t += `<td class="${cls}" colspan="${cell.len}">
+                <div class="cell-sub">${cell.name}</div>
+                <div class="cell-teach">${teachers}</div>
+                <div class="cell-room">${rooms}</div></td>`;
+      }
+    }
+    t += '</tr>';
+  }
+  t += '</tbody></table></div></div>';
+  return t;
+}
+
+/* ==========================================================================
+   8. TEACHER FREE-SLOT FINDER
+   ========================================================================== */
+function allTeachers(){
+  const s = new Set();
+  FACULTY.forEach(t=>{ if(t) s.add(t); });
+  RAW_ROWS.forEach(r=>{
+    if(r.teacher) s.add(r.teacher);
+    (r.coTeachers||[]).forEach(t=>s.add(t));
+  });
+  return [...s].sort();
+}
+function initTeacherPickers(){
+  document.getElementById('tfDay').innerHTML = DAYS.map((d,i)=>`<option value="${i}">${d}</option>`).join('');
+  fillTfSlots();
+  const teachers = allTeachers();
+  document.getElementById('tPick').innerHTML = teachers.map(t=>`<option value="${t}">${t}</option>`).join('');
+  if(teachers.length) renderTeacherGrid();
+}
+function fillTfSlots(){
+  const prog = document.getElementById('tfProg').value;
+  const P = PINFO[prog];
+  document.getElementById('tfSlot').innerHTML = P.map((p,i)=>`<option value="${i}">P${i+1} · ${p.label}</option>`).join('');
+}
+function teacherBusyInBin(st, teacher, day, bin){
+  const arrs = st.teacherBusy.get(teacher);
+  if(!arrs) return false;
+  return !!arrs[day][bin];
+}
+function teacherBusyAt(st, teacher, day, period){
+  for(const b of period.bins) if(teacherBusyInBin(st, teacher, day, b)) return true;
+  return false;
+}
+function findAssignmentAt(st, teacher, day, period){
+  for(const a of st.assignments){
+    if(a.teacher!==teacher && !(a.coTeachers||[]).includes(teacher)) continue;
+    if(a.day!==day) continue;
+    const P = PINFO[a.program];
+    const abins = [];
+    for(let k=0;k<a.len;k++) for(const b of P[a.startIdx+k].bins) abins.push(b);
+    if(abins.some(b=>period.bins.includes(b))) return a;
+  }
+  return null;
+}
+function renderFreeFinder(){
+  const out = document.getElementById('freeFinderOut');
+  if(!RESULT){ out.innerHTML = '<div class="hint">Generate the timetable first.</div>'; return; }
+
+  const prog = document.getElementById('tfProg').value;
+  const day  = parseInt(document.getElementById('tfDay').value);
+  const si   = parseInt(document.getElementById('tfSlot').value);
+  const period = PINFO[prog][si];
+  const st = RESULT.state;
+
+  const free = [], busy = [];
+  allTeachers().forEach(t=>{
+    if(teacherBusyAt(st, t, day, period)) busy.push(t); else free.push(t);
+  });
+
+  out.innerHTML = `
+    <div class="okbox" style="margin-bottom:10px">
+      <b>${DAYS[day]}</b> · <b>${prog} P${si+1}</b> · <b>${period.label}</b> —
+      <b style="color:#6ee7b7">${free.length} teachers FREE</b> &nbsp;|&nbsp;
+      <b style="color:#fca5a5">${busy.length} teachers BUSY</b>
+    </div>
+    <div class="grid2">
+      <div>
+        <h3>✅ Free Teachers (${free.length})</h3>
+        <div class="freebox">${free.map(t=>`<span class="chip free">${t}</span>`).join('') || '<span class="hint">None</span>'}</div>
+      </div>
+      <div>
+        <h3>⛔ Busy Teachers (${busy.length})</h3>
+        <div class="freebox">${busy.map(t=>{
+          const a = findAssignmentAt(st, t, day, period);
+          const info = a ? `${a.division} · ${a.code} · ${(a.rooms||[a.room]).join('+')}` : 'Busy';
+          return `<span class="chip busy" title="${info}">${t} — ${info}</span>`;
+        }).join('') || '<span class="hint">None</span>'}</div>
+      </div>
+    </div>`;
+}
+function renderTeacherGrid(){
+  const out = document.getElementById('teacherGridOut');
+  if(!RESULT){ out.innerHTML = '<div class="hint">Generate the timetable first.</div>'; return; }
+  const teacher = document.getElementById('tPick').value;
+  if(!teacher){ out.innerHTML = '<div class="hint">No teachers.</div>'; return; }
+
+  const mine = RESULT.assignments.filter(a=>a.teacher===teacher || (a.coTeachers||[]).includes(teacher));
+  const progs = [...new Set(mine.map(a=>a.program))];
+  if(!progs.length) progs.push('UG');
+
+  let html = '';
+  for(const prog of progs){
+    const P = PINFO[prog];
+    const map = {};
+    mine.filter(a=>a.program===prog).forEach(a=>{
+      for(let k=0;k<a.len;k++) map[a.day+'|'+(a.startIdx+k)] = (k===0)? a : {covered:true};
+    });
+    html += `<h3 style="margin-top:12px">${prog} Grid — ${teacher}</h3>
+      <div class="tbl-wrap"><table>
+      <thead><tr><th style="min-width:80px">Day</th>${P.map((p,i)=>`<th>P${i+1}<br><span style="font-weight:400;text-transform:none">${p.label}</span></th>`).join('')}</tr></thead><tbody>`;
+    let freeCount = 0;
+    for(let d=0; d<6; d++){
+      html += `<tr><td class="daycell">${DAYS_SHORT[d]}</td>`;
+      for(let i=0;i<P.length;i++){
+        const cell = map[d+'|'+i];
+        if(cell && cell.covered) continue;
+        if(!cell){ freeCount++; html += `<td class="free">FREE</td>`; }
+        else{
+          const role = cell.teacher===teacher ? '' : ' <span style="color:#fbbf24">(co)</span>';
+          const rooms = (cell.rooms||[cell.room]).join(' + ');
+          html += `<td class="${cell.type==='Lab'?'labcell':'busy'}" colspan="${cell.len}">
+            <div class="cell-sub">${cell.division} · ${cell.code}${role}</div>
+            <div class="cell-teach">${cell.name}</div>
+            <div class="cell-room">${rooms}</div></td>`;
+        }
+      }
+      html += '</tr>';
+    }
+    html += `</tbody></table></div>
+      <div class="small" style="margin-top:6px">Free periods in this ${prog} grid: <b>${freeCount}</b></div>`;
+  }
+  out.innerHTML = html;
+}
+
+/* ==========================================================================
+   9. ROOM UTILIZATION
+   ========================================================================== */
+function renderRoomStats(){
+  const stats = document.getElementById('roomStats');
+  const table = document.getElementById('roomTable');
+  if(!RESULT){ stats.innerHTML=''; table.innerHTML='<div class="hint" style="padding:14px">Generate the timetable first.</div>'; return; }
+
+  const use = RESULT.state.roomUse;
+  const crUse = CLASSROOMS.map(r=>use.get(r)||0);
+  const labUse = LABS.map(r=>use.get(r)||0);
+  const sum = a=>a.reduce((x,y)=>x+y,0);
+
+  const totalSlotsUG = UG_PERIODS.length*6;
+  const totalSlotsPG = PG_PERIODS.length*6;
+
+  const peak = {};
+  for(const day of [0,1,2,3,4,5]){
+    for(let b=0;b<NBIN;b++){
+      let c=0, l=0;
+      CLASSROOMS.forEach(r=>{ const a=RESULT.state.roomBusy.get(r); if(a && a[day][b]) c++; });
+      LABS.forEach(r=>{ const a=RESULT.state.roomBusy.get(r); if(a && a[day][b]) l++; });
+      if(c> (peak.cr||0)) peak.cr=c;
+      if(l> (peak.lab||0)) peak.lab=l;
+      if(c+l > (peak.total||0)) peak.total=c+l;
+    }
+  }
+
+  const cards = [
+    ['Classrooms Used', CLASSROOMS.filter(r=>use.get(r)).length + ' / ' + CLASSROOMS.length],
+    ['Labs Used', LABS.filter(r=>use.get(r)).length + ' / ' + LABS.length],
+    ['Classroom Slot-Uses', sum(crUse)],
+    ['Lab Slot-Uses', sum(labUse)],
+    ['Peak Concurrent Rooms', peak.total||0],
+    ['Total Sessions', RESULT.assignments.length]
+  ];
+  stats.innerHTML = cards.map(c=>`<div class="stat"><div class="v">${c[1]}</div><div class="l">${c[0]}</div></div>`).join('');
+
+  let html = `<table><thead><tr>
+    <th>Room</th><th>Type</th><th>Capacity</th><th>Slots Used</th><th>Capacity (UG+PG)</th><th>Utilization</th>
+  </tr></thead><tbody>`;
+  const rows = [
+    ...CLASSROOMS.map(r=>({r, t:'Classroom', cap:CLASSROOM_CAP, u:use.get(r)||0, total: totalSlotsUG+totalSlotsPG})),
+    ...LABS.map(r=>({r, t:'Laboratory', cap:LAB_CAP, u:use.get(r)||0, total: totalSlotsUG+totalSlotsPG}))
+  ];
+  rows.forEach(x=>{
+    const pct = Math.round(x.u / x.total * 100);
+    const col = pct>60?'#6ee7b7':pct>30?'#fcd34d':'#93a4c0';
+    html += `<tr><td>${x.r}</td><td>${x.t}</td><td>${x.cap}</td><td>${x.u}</td><td>${x.total}</td>
+      <td style="color:${col};font-weight:700">${pct}%</td></tr>`;
+  });
+  html += '</tbody></table>';
+  table.innerHTML = html;
+}
+
+/* ==========================================================================
+   10. EXPORTS
+   ========================================================================== */
+function exportMaster(){
+  if(!RESULT){ alert('Generate the timetable first.'); return; }
+  const wb = XLSX.utils.book_new();
+  for(const prog of ['UG','PG']){
+    const P = PINFO[prog];
+    const aoa = [];
+    aoa.push([`${prog} MASTER TIMETABLE  (Classroom cap ${CLASSROOM_CAP}, Lab cap ${LAB_CAP}, Lab = ${LABS_PER_LAB} rooms + ${FAC_PER_LAB} faculty)`]);
+    aoa.push(['Division','Day', ...P.map((p,i)=>`P${i+1}`)]);
+    aoa.push(['','', ...P.map(p=>p.label)]);
+    const divs = divisionsList().filter(d=>d[1]===prog).map(d=>d[0]);
+    divs.forEach(div=>{
+      const asg = RESULT.assignments.filter(a=>a.division===div);
+      const map = {};
+      asg.forEach(a=>{ for(let k=0;k<a.len;k++) map[a.day+'|'+(a.startIdx+k)] = (k===0)?a:{covered:true}; });
+      for(let d=0; d<6; d++){
+        const row = [div, DAYS_SHORT[d]];
+        for(let i=0;i<P.length;i++){
+          const c = map[d+'|'+i];
+          if(c && c.covered) row.push('');
+          else if(!c) row.push('FREE');
+          else{
+            const teachers = [c.teacher].concat(c.coTeachers||[]).join(' + ');
+            const rooms = (c.rooms||[c.room]).join(' + ');
+            row.push(`${c.name} (${c.code})\n${teachers}\n${rooms}`);
+          }
+        }
+        aoa.push(row);
+      }
+      aoa.push([]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{wch:12},{wch:8}, ...P.map(()=>({wch:30}))];
+    XLSX.utils.book_append_sheet(wb, ws, prog+'-Master');
+  }
+  XLSX.writeFile(wb, 'Master_Timetable.xlsx');
+}
+
+function exportTeacherFree(){
+  if(!RESULT){ alert('Generate the timetable first.'); return; }
+  const wb = XLSX.utils.book_new();
+  const st = RESULT.state;
+  const teachers = allTeachers();
+
+  ['UG','PG'].forEach(prog=>{
+    const P = PINFO[prog];
+    const aoa = [];
+    aoa.push([`${prog} TEACHER FREE / BUSY MATRIX`]);
+    aoa.push(['Teacher','Day', ...P.map((p,i)=>`P${i+1} ${p.label}`)]);
+    teachers.forEach(t=>{
+      for(let d=0; d<6; d++){
+        const row = [ (d===0? t : ''), DAYS_SHORT[d] ];
+        for(let i=0;i<P.length;i++) row.push(teacherBusyAt(st, t, d, P[i]) ? 'BUSY' : 'FREE');
+        aoa.push(row);
+      }
+      aoa.push([]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{wch:26},{wch:8}, ...P.map(()=>({wch:16}))];
+    XLSX.utils.book_append_sheet(wb, ws, prog+'-FreeSlots');
+  });
+
+  const aoa2 = [['Teacher','Role','Program','Day','Slot','Division','Subject Code','Subject','Type','Room(s)']];
+  RESULT.assignments.slice()
+    .sort((a,b)=> a.teacher.localeCompare(b.teacher) || a.day-b.day || a.startIdx-b.startIdx)
+    .forEach(a=>{
+      const rooms = (a.rooms||[a.room]).join(' + ');
+      aoa2.push([a.teacher, 'Primary', a.program, DAYS[a.day], a.slotLabels.join(' + '),
+                 a.division, a.code, a.name, a.type, rooms]);
+      (a.coTeachers||[]).forEach(ct=>{
+        aoa2.push([ct, 'Co-'+a.type, a.program, DAYS[a.day], a.slotLabels.join(' + '),
+                   a.division, a.code, a.name, a.type, rooms]);
+      });
+    });
+  const ws2 = XLSX.utils.aoa_to_sheet(aoa2);
+  ws2['!cols'] = [{wch:24},{wch:10},{wch:8},{wch:10},{wch:22},{wch:10},{wch:12},{wch:26},{wch:9},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Teacher-Schedule');
+
+  XLSX.writeFile(wb, 'Teacher_FreeSlots.xlsx');
+}
+
+/* ==========================================================================
+   11. TEMPLATE + DEMO
+   ========================================================================== */
+function downloadTemplate(){
+  const wb = XLSX.utils.book_new();
+  const aoa = [
+    ['Program','Semester','Division','Subject Code','Subject Name','Teacher','Type','Sessions/Week','Slots/Session'],
+    ['UG',3,'3-A','CS301','Data Structures','Prof. Aarav Sharma','Theory',4,1],
+    ['UG',3,'3-A','CS302','Data Structures Lab','Prof. Aarav Sharma, Prof. Neha Verma','Lab',1,2],
+    ['UG',5,'5-A','CS501','Software Engineering','Prof. Ananya Verma','Theory',4,1],
+    ['PG',7,'7-A','PG701','Machine Learning','Prof. Rahul Patel','Theory',4,1],
+    ['PG',7,'7-A','PG702','Machine Learning Lab','Prof. Rahul Patel, Prof. Priya Iyer','Lab',1,2]
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{wch:9},{wch:9},{wch:10},{wch:14},{wch:26},{wch:32},{wch:9},{wch:14},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws, 'SubjectAllocation');
+  XLSX.writeFile(wb, 'Subject_Teacher_Template.xlsx');
+}
+
+function loadDemo(){
+  const FIRST = ['Aarav','Ananya','Rahul','Priya','Vikram','Neha','Arjun','Sneha','Karan','Divya',
+                 'Rohit','Meera','Aditya','Pooja','Nikhil','Riya','Sanjay','Kavya','Manish','Isha'];
+  const LAST  = ['Sharma','Verma','Patel','Iyer','Nair','Reddy','Gupta','Mehta',
+                 'Joshi','Rao','Singh','Das','Kulkarni','Bose','Chopra','Malhotra'];
+  const TEACHERS = [];
+  for(let i=0;i<80;i++) TEACHERS.push('Prof. ' + FIRST[i%20] + ' ' + LAST[(i*7)%16]);
+
+  const SUBS = {
+    3: ['Data Structures','DBMS','Operating Systems','Computer Networks','Discrete Mathematics','OOP with Java'],
+    5: ['Software Engineering','Web Technology','Artificial Intelligence','Compiler Design','Data Mining','Cloud Computing'],
+    7: ['Machine Learning','Big Data Analytics','Internet of Things','Research Methodology','Cyber Security','Advanced Algorithms']
+  };
+  const LABS_BY_SEM = {
+    3: ['Data Structures Lab','DBMS Lab'],
+    5: ['Web Technology Lab','AI Lab'],
+    7: ['Machine Learning Lab','Big Data Lab']
+  };
+  const divPlan = [
+    {sem:3, prog:'UG', count:12},
+    {sem:5, prog:'UG', count:11},
+    {sem:7, prog:'PG', count:9}
+  ];
+
+  // config
+  document.getElementById('cfgClassrooms').value = 25;
+  document.getElementById('cfgLabs').value = 25;
+  document.getElementById('cfgCrPrefix').value = 'CR-';
+  document.getElementById('cfgLabPrefix').value = 'LAB-';
+  document.getElementById('cfgCrPad').value = 2;
+  document.getElementById('cfgLabPad').value = 2;
+  document.getElementById('cfgCrCap').value = 70;
+  document.getElementById('cfgLabCap').value = 35;
+  document.getElementById('cfgLabsPerSess').value = 2;
+  document.getElementById('cfgFacPerLab').value = 2;
+  document.getElementById('cfgFaculty').value = TEACHERS.join('\n');
+  applyConfig();
+
+  const rows = [];
+  let tIdx = 0;
+  const letters = 'ABCDEFGHIJKL';
+
+  divPlan.forEach(plan=>{
+    for(let d=0; d<plan.count; d++){
+      const divName = plan.sem + '-' + letters[d];
+      SUBS[plan.sem].forEach((sname, si)=>{
+        rows.push({
+          program: plan.prog, sem: plan.sem, division: divName,
+          code: 'CS'+plan.sem+String(si+1).padStart(2,'0'), name: sname,
+          teacher: TEACHERS[tIdx++ % 80], type:'Theory', sessions:4, len:1
+        });
+      });
+      // Labs: give each lab TWO teachers explicitly to demonstrate multi-teacher feature
+      LABS_BY_SEM[plan.sem].forEach((sname, si)=>{
+        const t1 = TEACHERS[tIdx++ % 80];
+        const t2 = TEACHERS[tIdx++ % 80];
+        rows.push({
+          program: plan.prog, sem: plan.sem, division: divName,
+          code: 'CS'+plan.sem+'L'+(si+1), name: sname,
+          teacher: t1 + ', ' + t2, type:'Lab', sessions:1, len:2
+        });
+      });
+    }
+  });
+  loadRows(rows);
+  setTimeout(generate, 250);
+}
+
+/* ==========================================================================
+   12. INIT
+   ========================================================================== */
+document.getElementById('fileInput').addEventListener('change', function(e){
+  const f = e.target.files[0];
+  if(f) parseWorkbook(f);
+});
+document.getElementById('cfgImportFile').addEventListener('change', function(e){
+  const f = e.target.files[0];
+  if(f) importConfigFile(f);
+  e.target.value = '';
+});
+
+CLASSROOMS = buildRoomNames(25, 'CR-', 2);
+LABS       = buildRoomNames(25, 'LAB-', 2);
+updateCfgPreview();
+renderTimingStrips();
+renderSummary();
+
+window.__tt = { get result(){ return RESULT; }, get rooms(){ return CLASSROOMS; }, get labs(){ return LABS; }, get faculty(){ return FACULTY; } };
+</script>
+</body>
+</html>
